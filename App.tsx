@@ -5,8 +5,8 @@ import AIPanel from './components/AIPanel';
 import AnimationPanel from './components/AnimationPanel';
 import LayerPanel from './components/LayerPanel';
 import { ToolType, Frame, Layer, ProjectState } from './types';
-import { createEmptyGrid, replaceColor } from './utils/drawingUtils';
-import { Download, Upload, FileJson, Clapperboard, Settings, Image as ImageIcon, Layers, Sparkles, FolderOpen, Save, Archive, FileImage } from 'lucide-react';
+import { createEmptyGrid, replaceColor, invertMask, expandMask, contractMask } from './utils/drawingUtils';
+import { Download, Upload, FileJson, Clapperboard, Settings, Image as ImageIcon, Layers, Sparkles, FolderOpen, Save, Archive, FileImage, MousePointer2, Maximize2, Minimize2, ArrowLeftRight, X } from 'lucide-react';
 import * as _gifenc from 'gifenc';
 import JSZip from 'jszip';
 
@@ -46,8 +46,9 @@ function App() {
   const [isPlaying, setIsPlaying] = useState(false);
   const [gridVisible, setGridVisible] = useState(true);
   
-  // Selection Mask
+  // Selection Mask & Saved Selections
   const [selectionMask, setSelectionMask] = useState<boolean[][] | null>(null);
+  const [savedSelections, setSavedSelections] = useState<Record<string, boolean[][]>>({});
 
   // Right Sidebar Tab State
   const [activeRightTab, setActiveRightTab] = useState<'layers' | 'ai'>('layers');
@@ -200,6 +201,40 @@ function App() {
       const [movedLayer] = newLayers.splice(fromIndex, 1);
       newLayers.splice(toIndex, 0, movedLayer);
       setLayers(newLayers);
+  };
+
+  // --- Selection Operations ---
+
+  const invertSelection = () => {
+      if (!selectionMask) return;
+      setSelectionMask(invertMask(selectionMask, width, height));
+  };
+
+  const expandSelection = () => {
+      if (!selectionMask) return;
+      setSelectionMask(expandMask(selectionMask, width, height));
+  };
+
+  const contractSelection = () => {
+      if (!selectionMask) return;
+      setSelectionMask(contractMask(selectionMask, width, height));
+  };
+
+  const saveSelection = () => {
+      if (!selectionMask) return;
+      const name = prompt("Enter a name for this selection mask:", `Selection ${Object.keys(savedSelections).length + 1}`);
+      if (name) {
+          setSavedSelections(prev => ({
+              ...prev,
+              [name]: selectionMask
+          }));
+      }
+  };
+
+  const loadSelection = (name: string) => {
+      if (savedSelections[name]) {
+          setSelectionMask(savedSelections[name]);
+      }
   };
 
   // --- Compositing ---
@@ -386,7 +421,8 @@ function App() {
           fps,
           layers,
           frames,
-          activeLayerId
+          activeLayerId,
+          savedSelections
       };
       
       const blob = new Blob([JSON.stringify(projectData, null, 2)], { type: 'application/json' });
@@ -416,6 +452,10 @@ function App() {
                   // Ensure active layer exists
                   const activeExists = data.layers.find((l: Layer) => l.id === data.activeLayerId);
                   setActiveLayerId(activeExists ? data.activeLayerId : data.layers[0].id);
+
+                  if (data.savedSelections) {
+                      setSavedSelections(data.savedSelections);
+                  }
                   
                   setCurrentFrameIndex(0);
                   alert('Project loaded successfully!');
@@ -500,7 +540,7 @@ function App() {
   return (
     <div className="flex flex-col h-screen bg-gray-950 text-white font-sans">
       {/* Top Header */}
-      <header className="h-14 border-b border-gray-800 bg-gray-900 flex items-center px-4 justify-between z-20 shrink-0">
+      <header className="h-14 border-b border-gray-800 bg-gray-900 flex items-center px-4 justify-between z-20 shrink-0 relative">
         <div className="flex items-center gap-4">
           <div className="flex items-center gap-2">
             <div className="w-8 h-8 bg-gradient-to-tr from-indigo-500 to-purple-500 rounded flex items-center justify-center font-bold text-sm">P</div>
@@ -519,6 +559,26 @@ function App() {
         </div>
         
         <div className="flex items-center gap-2">
+             {/* Load Selection Dropdown (Only if saved selections exist) */}
+             {Object.keys(savedSelections).length > 0 && (
+                <div className="relative group">
+                    <button className="flex items-center gap-1 text-xs text-gray-400 hover:text-white px-2 py-1.5 rounded hover:bg-gray-700 border border-gray-700">
+                        <MousePointer2 size={14}/> Load Selection
+                    </button>
+                    <div className="absolute right-0 top-full mt-1 w-40 bg-gray-800 border border-gray-700 rounded shadow-lg hidden group-hover:block z-50">
+                        {Object.keys(savedSelections).map(name => (
+                            <button 
+                                key={name}
+                                onClick={() => loadSelection(name)}
+                                className="block w-full text-left px-3 py-2 text-xs text-gray-300 hover:bg-gray-700 hover:text-white"
+                            >
+                                {name}
+                            </button>
+                        ))}
+                    </div>
+                </div>
+             )}
+
              {/* Project Files Group */}
              <div className="flex items-center bg-gray-800 rounded p-1 gap-1 border border-gray-700">
                 <label className="p-1.5 text-gray-400 hover:text-white hover:bg-gray-700 rounded cursor-pointer" title="Load Project">
@@ -555,6 +615,35 @@ function App() {
              </div>
         </div>
       </header>
+
+      {/* Selection Control Bar */}
+      {selectionMask && (
+        <div className="bg-indigo-900/30 border-b border-indigo-500/30 h-10 flex items-center justify-center gap-4 px-4 z-10 animate-in slide-in-from-top duration-200">
+            <span className="text-xs text-indigo-300 font-bold uppercase tracking-wider">Active Selection</span>
+            
+            <div className="h-4 w-px bg-indigo-500/30"></div>
+            
+            <button onClick={invertSelection} className="flex items-center gap-1 text-xs text-indigo-200 hover:text-white hover:bg-indigo-500/30 px-2 py-1 rounded" title="Invert Selection">
+                <ArrowLeftRight size={12} /> Invert
+            </button>
+            <button onClick={expandSelection} className="flex items-center gap-1 text-xs text-indigo-200 hover:text-white hover:bg-indigo-500/30 px-2 py-1 rounded" title="Expand (Feather)">
+                <Maximize2 size={12} /> Expand
+            </button>
+            <button onClick={contractSelection} className="flex items-center gap-1 text-xs text-indigo-200 hover:text-white hover:bg-indigo-500/30 px-2 py-1 rounded" title="Contract (Shrink)">
+                <Minimize2 size={12} /> Contract
+            </button>
+            
+            <div className="h-4 w-px bg-indigo-500/30"></div>
+
+            <button onClick={saveSelection} className="flex items-center gap-1 text-xs text-indigo-200 hover:text-white hover:bg-indigo-500/30 px-2 py-1 rounded" title="Save Selection">
+                <Save size={12} /> Save
+            </button>
+            
+            <button onClick={() => setSelectionMask(null)} className="flex items-center gap-1 text-xs text-red-300 hover:text-red-100 hover:bg-red-500/20 px-2 py-1 rounded ml-auto" title="Clear Selection">
+                <X size={12} /> Clear
+            </button>
+        </div>
+      )}
 
       {/* Main Workspace */}
       <div className="flex-1 flex overflow-hidden">

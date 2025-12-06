@@ -301,3 +301,46 @@ export const rasterizeTransformMask = (
     }
     return output;
 };
+
+// --- Selection Mask Helpers ---
+
+export const createEmptyMask = (width: number, height: number): boolean[][] => {
+    return Array(height).fill(false).map(() => Array(width).fill(false));
+};
+
+export const invertMask = (mask: boolean[][], width: number, height: number): boolean[][] => {
+  return mask.map(row => row.map(val => !val));
+};
+
+export const expandMask = (mask: boolean[][], width: number, height: number): boolean[][] => {
+  const newMask = mask.map(row => [...row]);
+  for (let y = 0; y < height; y++) {
+    for (let x = 0; x < width; x++) {
+      if (mask[y][x]) {
+        if (x + 1 < width) newMask[y][x + 1] = true;
+        if (x - 1 >= 0) newMask[y][x - 1] = true;
+        if (y + 1 < height) newMask[y + 1][x] = true;
+        if (y - 1 >= 0) newMask[y - 1][x] = true;
+      }
+    }
+  }
+  return newMask;
+};
+
+export const contractMask = (mask: boolean[][], width: number, height: number): boolean[][] => {
+    const newMask = createEmptyMask(width, height);
+    for (let y = 0; y < height; y++) {
+        for (let x = 0; x < width; x++) {
+            if (mask[y][x]) {
+                const n = y > 0 ? mask[y-1][x] : false;
+                const s = y < height - 1 ? mask[y+1][x] : false;
+                const e = x < width - 1 ? mask[y][x+1] : false;
+                const w = x > 0 ? mask[y][x-1] : false;
+                if (n && s && e && w) {
+                    newMask[y][x] = true;
+                }
+            }
+        }
+    }
+    return newMask;
+};
