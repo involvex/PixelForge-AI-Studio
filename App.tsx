@@ -6,7 +6,7 @@ import AnimationPanel from './components/AnimationPanel';
 import LayerPanel from './components/LayerPanel';
 import { ToolType, Frame, Layer, ProjectState } from './types';
 import { createEmptyGrid, replaceColor, invertMask, expandMask, contractMask } from './utils/drawingUtils';
-import { Download, Upload, FileJson, Clapperboard, Settings, Image as ImageIcon, Layers, Sparkles, FolderOpen, Save, Archive, FileImage, MousePointer2, Maximize2, Minimize2, ArrowLeftRight, X } from 'lucide-react';
+import { Download, Upload, FileJson, Clapperboard, Settings, Image as ImageIcon, Layers, Sparkles, FolderOpen, Save, Archive, FileImage, MousePointer2, Maximize2, Minimize2, ArrowLeftRight, X, Undo, Redo } from 'lucide-react';
 import * as _gifenc from 'gifenc';
 import JSZip from 'jszip';
 
@@ -15,6 +15,19 @@ const gifenc = (_gifenc as any).default ?? _gifenc;
 const { GIFEncoder, quantize, applyPalette } = gifenc;
 
 const DEFAULT_SIZE = 32;
+
+// History State Interface
+interface HistoryState {
+  frames: Frame[];
+  layers: Layer[];
+  width: number;
+  height: number;
+  activeLayerId: string;
+  currentFrameIndex: number;
+  // We can include selection mask if we want selection persistence across undo, 
+  // but often selections are transient. Let's include it for better UX.
+  selectionMask: boolean[][] | null;
+}
 
 function App() {
   // --- State ---
@@ -50,6 +63,12 @@ function App() {
   const [selectionMask, setSelectionMask] = useState<boolean[][] | null>(null);
   const [savedSelections, setSavedSelections] = useState<Record<string, boolean[][]>>({});
 
+  // History Stacks
+  const [past, setPast] = useState<HistoryState[]>([]);
+  const [future, setFuture] = useState<HistoryState[]>([]);
+  // Version counter to signal canvas to reset transient states (like transform)
+  const [historyVersion, setHistoryVersion] = useState(0);
+
   // Right Sidebar Tab State
   const [activeRightTab, setActiveRightTab] = useState<'layers' | 'ai'>('layers');
 
@@ -63,6 +82,99 @@ function App() {
     }
     return () => clearInterval(interval);
   }, [isPlaying, fps, frames.length]);
+
+  // --- History Management ---
+
+  const recordHistory = useCallback(() => {
+    // Deep copy current state
+    const currentState: HistoryState = {
+      frames: JSON.parse(JSON.stringify(frames)),
+      layers: JSON.parse(JSON.stringify(layers)),
+      width,
+      height,
+      activeLayerId,
+      currentFrameIndex,
+      selectionMask: selectionMask ? JSON.parse(JSON.stringify(selectionMask)) : null
+    };
+
+    setPast(prev => {
+        // Limit history size to e.g. 50 steps
+        const newHistory = [...prev, currentState];
+        if (newHistory.length > 50) return newHistory.slice(1);
+        return newHistory;
+    });
+    setFuture([]); // Clear redo stack
+  }, [frames, layers, width, height, activeLayerId, currentFrameIndex, selectionMask]);
+
+  const performUndo = useCallback(() => {
+    if (past.length === 0) return;
+
+    const previous = past[past.length - 1];
+    const newPast = past.slice(0, past.length - 1);
+
+    // Save current to future
+    const current: HistoryState = { 
+        frames, layers, width, height, activeLayerId, currentFrameIndex, selectionMask 
+    };
+    setFuture(prev => [current, ...prev]);
+    setPast(newPast);
+
+    // Restore
+    setFrames(previous.frames);
+    setLayers(previous.layers);
+    setWidth(previous.width);
+    setHeight(previous.height);
+    // Only set active layer if it still exists (it should), but safe to restore
+    setActiveLayerId(previous.activeLayerId);
+    setCurrentFrameIndex(previous.currentFrameIndex);
+    setSelectionMask(previous.selectionMask);
+    
+    setHistoryVersion(v => v + 1);
+  }, [past, frames, layers, width, height, activeLayerId, currentFrameIndex, selectionMask]);
+
+  const performRedo = useCallback(() => {
+    if (future.length === 0) return;
+
+    const next = future[0];
+    const newFuture = future.slice(1);
+
+    // Save current to past
+    const current: HistoryState = { 
+        frames, layers, width, height, activeLayerId, currentFrameIndex, selectionMask 
+    };
+    setPast(prev => [...prev, current]);
+    setFuture(newFuture);
+
+    // Restore
+    setFrames(next.frames);
+    setLayers(next.layers);
+    setWidth(next.width);
+    setHeight(next.height);
+    setActiveLayerId(next.activeLayerId);
+    setCurrentFrameIndex(next.currentFrameIndex);
+    setSelectionMask(next.selectionMask);
+
+    setHistoryVersion(v => v + 1);
+  }, [future, frames, layers, width, height, activeLayerId, currentFrameIndex, selectionMask]);
+
+  // Keyboard Shortcuts for Undo/Redo
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'z') {
+        e.preventDefault();
+        if (e.shiftKey) {
+          performRedo();
+        } else {
+          performUndo();
+        }
+      } else if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'y') {
+        e.preventDefault();
+        performRedo();
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [performUndo, performRedo]);
 
   // --- Helpers ---
   
@@ -82,6 +194,7 @@ function App() {
 
   const handleResize = (newW: number, newH: number) => {
       if (newW < 1 || newH < 1) return;
+      recordHistory();
       setWidth(newW);
       setHeight(newH);
       
@@ -106,6 +219,7 @@ function App() {
   };
 
   const addFrame = () => {
+    recordHistory();
     // New frame needs empty grids for all existing layers
     const newLayers: Record<string, (string|null)[][]> = {};
     layers.forEach(l => {
@@ -120,6 +234,7 @@ function App() {
   };
 
   const duplicateFrame = (index: number) => {
+    recordHistory();
     const frameToCopy = frames[index];
     // Deep copy layers
     const newLayers: Record<string, (string|null)[][]> = {};
@@ -140,12 +255,14 @@ function App() {
 
   const deleteFrame = (index: number) => {
     if (frames.length <= 1) return;
+    recordHistory();
     const newFrames = frames.filter((_, i) => i !== index);
     setFrames(newFrames);
     setCurrentFrameIndex(Math.max(0, index - 1));
   };
 
   const handleReplaceColor = () => {
+      recordHistory();
       // Replaces color on ACTIVE layer
       const currentPixels = frames[currentFrameIndex].layers[activeLayerId];
       if (!currentPixels) return;
@@ -155,6 +272,7 @@ function App() {
 
   // --- Layer Management ---
   const handleAddLayer = () => {
+      recordHistory();
       const newId = `layer-${Date.now()}`;
       const newLayer: Layer = { id: newId, name: `Layer ${layers.length + 1}`, visible: true, locked: false, opacity: 1.0 };
       
@@ -173,6 +291,7 @@ function App() {
 
   const handleRemoveLayer = (id: string) => {
       if (layers.length <= 1) return;
+      recordHistory();
       const newLayers = layers.filter(l => l.id !== id);
       setLayers(newLayers);
       
@@ -189,6 +308,12 @@ function App() {
   };
 
   const handleUpdateLayer = (id: string, updates: Partial<Layer>) => {
+      // Avoid recording history for opacity slider drag (too many events)
+      // We assume if it's visible or locked or name change, we record.
+      // If it's opacity, we skip (or you'd need a way to detect start/end of slide)
+      if (updates.opacity === undefined) {
+         recordHistory();
+      }
       setLayers(prev => prev.map(l => l.id === id ? { ...l, ...updates } : l));
   };
 
@@ -196,7 +321,7 @@ function App() {
       if (fromIndex < 0 || fromIndex >= layers.length || toIndex < 0 || toIndex >= layers.length || fromIndex === toIndex) {
           return;
       }
-      
+      recordHistory();
       const newLayers = [...layers];
       const [movedLayer] = newLayers.splice(fromIndex, 1);
       newLayers.splice(toIndex, 0, movedLayer);
@@ -207,16 +332,19 @@ function App() {
 
   const invertSelection = () => {
       if (!selectionMask) return;
+      recordHistory();
       setSelectionMask(invertMask(selectionMask, width, height));
   };
 
   const expandSelection = () => {
       if (!selectionMask) return;
+      recordHistory();
       setSelectionMask(expandMask(selectionMask, width, height));
   };
 
   const contractSelection = () => {
       if (!selectionMask) return;
+      recordHistory();
       setSelectionMask(contractMask(selectionMask, width, height));
   };
 
@@ -233,6 +361,7 @@ function App() {
 
   const loadSelection = (name: string) => {
       if (savedSelections[name]) {
+          recordHistory();
           setSelectionMask(savedSelections[name]);
       }
   };
@@ -277,6 +406,7 @@ function App() {
     const img = new Image();
     img.src = base64;
     img.onload = () => {
+      recordHistory(); // Record before applying
       const canvas = document.createElement('canvas');
       canvas.width = width;
       canvas.height = height;
@@ -381,7 +511,6 @@ function App() {
   const exportFramesZip = async () => {
     const zip = new JSZip();
     
-    // Create a Promise for each frame render/blob generation
     const promises = frames.map(async (frame, index) => {
         const canvas = document.createElement('canvas');
         canvas.width = width;
@@ -394,7 +523,6 @@ function App() {
         return new Promise<void>((resolve) => {
             canvas.toBlob((blob) => {
                 if (blob) {
-                    // Use padStart for proper sorting: frame_001.png
                     const fileName = `frame_${(index + 1).toString().padStart(3, '0')}.png`;
                     zip.file(fileName, blob);
                 }
@@ -458,6 +586,9 @@ function App() {
                   }
                   
                   setCurrentFrameIndex(0);
+                  // Clear history on new project load
+                  setPast([]);
+                  setFuture([]);
                   alert('Project loaded successfully!');
               } else {
                   alert('Invalid project file format.');
@@ -468,7 +599,6 @@ function App() {
           }
       };
       reader.readAsText(file);
-      // Reset input value to allow reloading same file
       e.target.value = '';
   };
 
@@ -480,6 +610,7 @@ function App() {
       reader.onload = (evt) => {
           const img = new Image();
           img.onload = () => {
+              recordHistory();
               const cols = Math.floor(img.width / width);
               const rows = Math.floor(img.height / height);
               const newFrames: Frame[] = [];
@@ -547,6 +678,27 @@ function App() {
             <h1 className="font-pixel text-sm tracking-wide text-gray-200 hidden md:block">PixelForge <span className="text-indigo-400">AI</span></h1>
           </div>
           
+          <div className="h-6 w-px bg-gray-700 mx-2"></div>
+          
+          <div className="flex items-center gap-2">
+             <button 
+               onClick={performUndo} 
+               disabled={past.length === 0}
+               className={`p-1.5 rounded ${past.length === 0 ? 'text-gray-600' : 'text-gray-400 hover:text-white hover:bg-gray-800'}`}
+               title="Undo (Ctrl+Z)"
+             >
+               <Undo size={16} />
+             </button>
+             <button 
+               onClick={performRedo}
+               disabled={future.length === 0}
+               className={`p-1.5 rounded ${future.length === 0 ? 'text-gray-600' : 'text-gray-400 hover:text-white hover:bg-gray-800'}`}
+               title="Redo (Ctrl+Y)"
+             >
+               <Redo size={16} />
+             </button>
+          </div>
+
           <div className="h-6 w-px bg-gray-700 mx-2"></div>
           
           {/* Grid Generator / Resize */}
@@ -680,6 +832,8 @@ function App() {
                         setPrimaryColor={setPrimaryColor}
                         selectionMask={selectionMask}
                         setSelectionMask={setSelectionMask}
+                        onDrawStart={recordHistory}
+                        historyVersion={historyVersion}
                     />
                 </div>
             </div>

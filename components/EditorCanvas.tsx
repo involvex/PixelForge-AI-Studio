@@ -18,6 +18,8 @@ interface EditorCanvasProps {
   setPrimaryColor: (color: string) => void;
   selectionMask: boolean[][] | null;
   setSelectionMask: (mask: boolean[][] | null) => void;
+  onDrawStart: () => void;
+  historyVersion: number;
 }
 
 interface TransformState {
@@ -49,7 +51,9 @@ const EditorCanvas: React.FC<EditorCanvasProps> = ({
   gridVisible,
   setPrimaryColor,
   selectionMask,
-  setSelectionMask
+  setSelectionMask,
+  onDrawStart,
+  historyVersion
 }) => {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const [isDrawing, setIsDrawing] = useState(false);
@@ -65,9 +69,25 @@ const EditorCanvas: React.FC<EditorCanvasProps> = ({
   const [activeHandle, setActiveHandle] = useState<string | null>(null);
   const [transformStart, setTransformStart] = useState<{mouse: Coordinates, state: TransformState} | null>(null);
 
+  // Reset transient states when history changes (e.g. undo/redo)
+  useEffect(() => {
+    setTransformState(null);
+    setFloatingBuffer(null);
+    setFloatingOffset({ x: 0, y: 0 });
+    setDragStart(null);
+    setIsDrawing(false);
+    setActiveHandle(null);
+    setTransformStart(null);
+  }, [historyVersion]);
+
   // Commit function for Transform
   const commitTransform = () => {
     if (!transformState) return;
+
+    // History is recorded at start of transform tool usage (when pixels are extracted),
+    // OR should be recorded here? 
+    // We already recorded history when we extracted the pixels (pointerDown).
+    // So committing just updates the pixels for the *current* state.
 
     const currentPixels = layerPixels[activeLayerId]; // This should be the version with cut pixels
     const newPixels = rasterizeTransform(
@@ -161,13 +181,9 @@ const EditorCanvas: React.FC<EditorCanvasProps> = ({
          ctx.scale(transformState.scaleX, transformState.scaleY);
          
          // Draw the source buffer centered at (0,0) in local transformed space
-         // Source buffer size:
          const sw = transformState.sourceWidth * zoom;
          const sh = transformState.sourceHeight * zoom;
          
-         // Iterate the small source buffer
-         // Optimization: Pre-render source buffer to an offscreen canvas if performance lags,
-         // but for 32x32 or 64x64 pixel art, iteration is instant.
          transformState.sourcePixels.forEach((row, y) => {
              row.forEach((color, x) => {
                  if (color) {
@@ -186,7 +202,6 @@ const EditorCanvas: React.FC<EditorCanvasProps> = ({
          ctx.restore();
 
          // Draw Handles (In Global Screen Space to prevent them from scaling/rotating weirdly)
-         // We need to project the local corners to global space
          const corners = [
             { x: -transformState.sourceWidth/2, y: -transformState.sourceHeight/2, cursor: 'nw-resize', id: 'nw' },
             { x: transformState.sourceWidth/2, y: -transformState.sourceHeight/2, cursor: 'ne-resize', id: 'ne' },
@@ -201,12 +216,11 @@ const EditorCanvas: React.FC<EditorCanvasProps> = ({
          ctx.fillStyle = 'white';
          ctx.strokeStyle = '#00ffcc';
          
-         // Rotation Handle (Stick sticking out top)
+         // Rotation Handle
          const topY = -transformState.sourceHeight/2 - 2; // 2 units above top
          const rX = topY * -sin * transformState.scaleY + cx;
          const rY = topY * cos * transformState.scaleY + cy;
          
-         // Draw line to rotation handle
          const topMidX = (-transformState.sourceHeight/2) * -sin * transformState.scaleY + cx;
          const topMidY = (-transformState.sourceHeight/2) * cos * transformState.scaleY + cy;
          ctx.beginPath();
@@ -220,16 +234,12 @@ const EditorCanvas: React.FC<EditorCanvasProps> = ({
          ctx.stroke();
 
          corners.forEach(c => {
-             // Apply scale then rotation then translation
-             // Local scaled
              const lx = c.x * transformState.scaleX * zoom;
              const ly = c.y * transformState.scaleY * zoom;
              
-             // Rotated
              const rx = lx * cos - ly * sin;
              const ry = lx * sin + ly * cos;
              
-             // Translated
              const finalX = rx + cx;
              const finalY = ry + cy;
 
@@ -258,7 +268,7 @@ const EditorCanvas: React.FC<EditorCanvasProps> = ({
       ctx.stroke();
     }
 
-    // 3. Draw Selection Overlay (Only if NOT transforming, as transform renders its own border)
+    // 3. Draw Selection Overlay
     if (selectionMask && selectedTool !== ToolType.TRANSFORM) {
       ctx.fillStyle = 'rgba(100, 150, 255, 0.2)';
       ctx.strokeStyle = '#fff';
@@ -298,7 +308,9 @@ const EditorCanvas: React.FC<EditorCanvasProps> = ({
     
     // Check for Transform Handle Hits
     if (selectedTool === ToolType.TRANSFORM && transformState) {
-         // Logic to detect handle clicks needs screen coordinates, not grid coordinates
+         // Transform interaction logic remains same...
+         // [Omitted redundant hit test logic for brevity, keeping structure]
+         // Logic to detect handle clicks:
          const rect = canvas.getBoundingClientRect();
          let clientX, clientY;
          if ('touches' in e) {
@@ -310,13 +322,12 @@ const EditorCanvas: React.FC<EditorCanvasProps> = ({
          const mx = clientX - rect.left;
          const my = clientY - rect.top;
 
-         // Re-calculate handle positions
+         // Re-calculate handle positions and check hits...
          const cx = (transformState.x + (transformState.width * transformState.scaleX) / 2) * zoom;
          const cy = (transformState.y + (transformState.height * transformState.scaleY) / 2) * zoom;
          const cos = Math.cos(transformState.rotation);
          const sin = Math.sin(transformState.rotation);
 
-         // Check Rotate Handle
          const topY = -transformState.sourceHeight/2 - 2;
          const rX = topY * -sin * transformState.scaleY * zoom + cx;
          const rY = topY * cos * transformState.scaleY * zoom + cy;
@@ -351,8 +362,6 @@ const EditorCanvas: React.FC<EditorCanvasProps> = ({
              }
          }
          
-         // Check for Body Drag (Move)
-         // Simple check: distance from center < max dimension * zoom
          if (Math.hypot(mx - cx, my - cy) < (Math.max(transformState.width, transformState.height) * zoom / 2)) {
              setActiveHandle('move');
              setTransformStart({ mouse: {x: mx, y: my}, state: {...transformState} });
@@ -360,7 +369,6 @@ const EditorCanvas: React.FC<EditorCanvasProps> = ({
              return;
          }
          
-         // Clicked outside -> Commit?
          commitTransform();
          return;
     }
@@ -368,13 +376,14 @@ const EditorCanvas: React.FC<EditorCanvasProps> = ({
     if (!coords) return;
 
     if (selectedTool === ToolType.TRANSFORM && !transformState) {
-        // Initialize Transform
-        // If selection exists, grab that. If not, grab whole layer.
+        // Record history before cutting pixels for transform
+        onDrawStart();
+
+        // Initialize Transform logic
         let bounds = { minX: 0, minY: 0, maxX: width, maxY: height };
         let mask = selectionMask;
         
         if (selectionMask) {
-             // Find bounds
              let minX = width, minY = height, maxX = 0, maxY = 0;
              let hasSelection = false;
              for(let y=0; y<height; y++) {
@@ -391,22 +400,18 @@ const EditorCanvas: React.FC<EditorCanvasProps> = ({
              if(hasSelection) {
                  bounds = { minX, minY, maxX: maxX + 1, maxY: maxY + 1 };
              } else {
-                 mask = null; // Empty selection, fallback to whole layer
+                 mask = null;
              }
         } else {
-            // Implicitly select whole layer content bounds? Or just canvas size.
-            // Let's stick to canvas size for simplicity.
             mask = Array(height).fill(true).map(() => Array(width).fill(true));
         }
 
         const w = bounds.maxX - bounds.minX;
         const h = bounds.maxY - bounds.minY;
         
-        // Extract pixels
         const currentPixels = layerPixels[activeLayerId];
         const { cutPixels, floatingPixels } = extractSelectedPixels(currentPixels, mask!, width, height);
 
-        // Crop floating pixels to the bounds
         const croppedPixels = Array(h).fill(null).map(() => Array(w).fill(null));
         const croppedMask = Array(h).fill(false).map(() => Array(w).fill(false));
         
@@ -417,9 +422,8 @@ const EditorCanvas: React.FC<EditorCanvasProps> = ({
             }
         }
         
-        // Update layer to cut pixels
         onUpdateLayerPixels(activeLayerId, cutPixels);
-        setSelectionMask(null); // Hide standard selection mask overlay
+        setSelectionMask(null);
 
         setTransformState({
             x: bounds.minX,
@@ -439,6 +443,8 @@ const EditorCanvas: React.FC<EditorCanvasProps> = ({
 
     if (selectedTool === ToolType.MOVE) {
        if (selectionMask) {
+          // Record history before move starts
+          onDrawStart();
           setDragStart(coords);
           const currentPixels = layerPixels[activeLayerId];
           const { cutPixels, floatingPixels } = extractSelectedPixels(currentPixels, selectionMask, width, height);
@@ -447,6 +453,17 @@ const EditorCanvas: React.FC<EditorCanvasProps> = ({
           onUpdateLayerPixels(activeLayerId, cutPixels);
        }
        return;
+    }
+
+    // Standard Drawing Tools
+    // Don't record history for PICKER or SELECT since they don't modify pixels directly/destructively in a way we want to revert stroke-by-stroke usually?
+    // Wait, SELECT modifies selection mask. We do want undo for selection changes.
+    // PICKER modifies color state in App, not pixels. App handles that? No, Toolbar passes setPrimaryColor.
+    // If we want undo for color picking, we'd need to record history on setPrimaryColor.
+    // Usually undo is for canvas changes.
+    
+    if (selectedTool !== ToolType.PICKER) {
+        onDrawStart();
     }
 
     setIsDrawing(true);
@@ -459,6 +476,8 @@ const EditorCanvas: React.FC<EditorCanvasProps> = ({
 
     // Handle Transform Drag
     if (isDrawing && selectedTool === ToolType.TRANSFORM && transformState && activeHandle && transformStart) {
+         // [Omitted redundant handle logic, keeping structure]
+         // Handle move/rotate/scale updates to setTransformState...
          const rect = canvas.getBoundingClientRect();
          let clientX, clientY;
          if ('touches' in e) {
@@ -470,7 +489,6 @@ const EditorCanvas: React.FC<EditorCanvasProps> = ({
          const mx = clientX - rect.left;
          const my = clientY - rect.top;
 
-         // Delta in screen pixels
          const dx = (mx - transformStart.mouse.x) / zoom;
          const dy = (my - transformStart.mouse.y) / zoom;
 
@@ -481,7 +499,6 @@ const EditorCanvas: React.FC<EditorCanvasProps> = ({
                  y: transformStart.state.y + dy
              });
          } else if (activeHandle === 'rotate') {
-             // Calculate angle
              const cx = (transformState.x + (transformState.width * transformState.scaleX) / 2) * zoom;
              const cy = (transformState.y + (transformState.height * transformState.scaleY) / 2) * zoom;
              
@@ -493,35 +510,11 @@ const EditorCanvas: React.FC<EditorCanvasProps> = ({
                  rotation: transformStart.state.rotation + (angleCurr - angleStart)
              });
          } else {
-             // Scaling handles
-             // This is simplified symmetric scaling logic for robustness.
-             // Usually scaling happens relative to the *opposite* anchor.
-             // For this prompt, let's implement center-based scaling or simplified ratio scaling.
-             
-             // Simplest: Modify scaleX/scaleY based on drag distance relative to center
-             // NOTE: Real implementation requires projecting mouse to local space.
-             // Hack: Just use distance from center compared to start.
-             
-             const scaleSpeed = 0.05; // Sensitivity
-             
+             const scaleSpeed = 0.05; 
              let sx = transformStart.state.scaleX;
              let sy = transformStart.state.scaleY;
-             
-             // Determine directionality
-             const isRight = activeHandle.includes('e');
-             const isBottom = activeHandle.includes('s');
-             
-             // Project dx/dy onto local axis? Complex.
-             // Simple: If moving right handle right, increase X.
-             // We need to account for rotation to know what "right" is.
-             
-             // Let's do simple uniform scaling for handles for now, or assume unrotated for scale calculation?
-             // Scaling rotated objects is mathematically heavy for this space.
-             // Fallback: Uniform scaling based on radial distance.
-             
              const cx = transformStart.state.x * zoom + (transformStart.state.width * zoom * sx)/2;
              const cy = transformStart.state.y * zoom + (transformStart.state.height * zoom * sy)/2;
-             
              const startDist = Math.hypot(transformStart.mouse.x - cx, transformStart.mouse.y - cy);
              const currDist = Math.hypot(mx - cx, my - cy);
              const ratio = currDist / startDist;
@@ -580,7 +573,6 @@ const EditorCanvas: React.FC<EditorCanvasProps> = ({
     const canvas = canvasRef.current;
     if (!canvas) return;
 
-    // Check active layer constraints
     const activeLayer = layers.find(l => l.id === activeLayerId);
     if (!activeLayer || !activeLayer.visible || activeLayer.locked) return;
 
@@ -590,7 +582,6 @@ const EditorCanvas: React.FC<EditorCanvasProps> = ({
 
     if (x < 0 || x >= width || y < 0 || y >= height) return;
 
-    // Get current pixels for active layer
     const currentPixels = layerPixels[activeLayerId] || [];
     if (!currentPixels.length) return;
 
@@ -604,7 +595,6 @@ const EditorCanvas: React.FC<EditorCanvasProps> = ({
        return;
     }
 
-    // Selection Constraint
     if (selectionMask && !selectionMask[y][x]) {
         if (selectedTool === ToolType.SELECT) {
              if (e.type === 'mousedown' || e.type === 'touchstart') {
