@@ -1,0 +1,5 @@
+{
+  "name": "PixelForge AI Studio",
+  "description": "A professional-grade 2D pixel art and spritesheet editor powered by Google Gemini. Features include AI-assisted image generation, text-to-image editing, smart analysis, animation tools, and seamless asset export.",
+  "requestFramePermissions": []
+}
