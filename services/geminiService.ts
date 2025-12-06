@@ -10,22 +10,35 @@ const getAI = () => new GoogleGenAI({ apiKey: process.env.API_KEY });
 export const generateAsset = async (
   prompt: string,
   aspectRatio: AspectRatio,
-  imageSize: ImageSize
+  imageSize: ImageSize,
+  style: string = 'pixel art',
+  negativePrompt?: string,
+  seed?: number
 ): Promise<string> => {
   try {
     const ai = getAI();
+    
+    // Construct a rich prompt based on inputs
+    const finalPrompt = `${style} style. ${prompt}.${negativePrompt ? ` Exclude: ${negativePrompt}.` : ''}`;
+
+    const config: any = {
+      imageConfig: {
+        aspectRatio: aspectRatio,
+        imageSize: imageSize
+      }
+    };
+
+    if (seed !== undefined && seed !== null) {
+      config.seed = seed;
+    }
+
     // Using gemini-3-pro-image-preview for high quality generation
     const response = await ai.models.generateContent({
       model: 'gemini-3-pro-image-preview',
       contents: {
-        parts: [{ text: `Pixel art style. ${prompt}` }]
+        parts: [{ text: finalPrompt }]
       },
-      config: {
-        imageConfig: {
-          aspectRatio: aspectRatio,
-          imageSize: imageSize
-        }
-      }
+      config: config
     });
 
     for (const part of response.candidates?.[0]?.content?.parts || []) {
@@ -45,12 +58,18 @@ export const generateAsset = async (
  */
 export const editAsset = async (
   base64Image: string,
-  prompt: string
+  prompt: string,
+  seed?: number
 ): Promise<string> => {
   try {
     const ai = getAI();
     // Extract actual base64 data if it contains the prefix
     const data = base64Image.replace(/^data:image\/(png|jpeg|jpg);base64,/, '');
+
+    const config: any = {};
+    if (seed !== undefined && seed !== null) {
+        config.seed = seed;
+    }
 
     const response = await ai.models.generateContent({
       model: 'gemini-2.5-flash-image',
@@ -64,7 +83,8 @@ export const editAsset = async (
           },
           { text: `Maintain pixel art style. ${prompt}` }
         ]
-      }
+      },
+      config: config
     });
 
     for (const part of response.candidates?.[0]?.content?.parts || []) {

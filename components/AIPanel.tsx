@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Sparkles, MessageSquare, ImagePlus, Search, ScanEye, Wand2, Scissors } from 'lucide-react';
+import { Sparkles, MessageSquare, ImagePlus, Search, ScanEye, Wand2, Scissors, Dices, RefreshCcw, Eraser, Move } from 'lucide-react';
 import { generateAsset, editAsset, searchInspiration, analyzeAsset } from '../services/geminiService';
 import { AspectRatio, ImageSize, AIChatMessage } from '../types';
 
@@ -7,6 +7,18 @@ interface AIPanelProps {
   onApplyImage: (base64: string) => void;
   currentCanvasImage: () => string; // Function to get current canvas as base64
 }
+
+const PIXEL_STYLES = [
+  { id: 'pixel art', label: 'Default Pixel Art' },
+  { id: '8-bit retro game', label: '8-Bit Retro' },
+  { id: '16-bit snes style', label: '16-Bit SNES' },
+  { id: 'gameboy green screen', label: 'Gameboy' },
+  { id: 'isometric pixel art', label: 'Isometric' },
+  { id: 'flat pixel art', label: 'Flat Design' },
+  { id: 'cyberpunk pixel art', label: 'Cyberpunk' },
+  { id: 'dark fantasy pixel art', label: 'Dark Fantasy' },
+  { id: 'cute chibi pixel art', label: 'Cute Chibi' }
+];
 
 const AIPanel: React.FC<AIPanelProps> = ({ onApplyImage, currentCanvasImage }) => {
   const [activeTab, setActiveTab] = useState<'generate' | 'edit' | 'search' | 'analyze'>('generate');
@@ -16,6 +28,14 @@ const AIPanel: React.FC<AIPanelProps> = ({ onApplyImage, currentCanvasImage }) =
   // Generation Config
   const [aspectRatio, setAspectRatio] = useState<AspectRatio>(AspectRatio.SQUARE_1_1);
   const [imageSize, setImageSize] = useState<ImageSize>(ImageSize.SIZE_1K);
+  const [selectedStyle, setSelectedStyle] = useState(PIXEL_STYLES[0].id);
+  const [negativePrompt, setNegativePrompt] = useState('');
+  const [seed, setSeed] = useState<string>('');
+
+  // Editing Config
+  const [editMode, setEditMode] = useState<'free' | 'replace_obj' | 'replace_bg' | 'transform'>('free');
+  const [editTarget, setEditTarget] = useState('');
+  const [editReplacement, setEditReplacement] = useState('');
 
   // Chat/History State
   const [messages, setMessages] = useState<AIChatMessage[]>([]);
@@ -26,7 +46,15 @@ const AIPanel: React.FC<AIPanelProps> = ({ onApplyImage, currentCanvasImage }) =
     setLoading(true);
     setMessages(prev => [...prev, { role: 'user', text: `Generate: ${prompt}` }]);
     try {
-      const image = await generateAsset(prompt, aspectRatio, imageSize);
+      const seedNum = seed.trim() ? parseInt(seed) : undefined;
+      const image = await generateAsset(
+          prompt, 
+          aspectRatio, 
+          imageSize, 
+          selectedStyle, 
+          negativePrompt, 
+          seedNum
+      );
       onApplyImage(image);
       setMessages(prev => [...prev, { role: 'model', text: 'Image generated and applied to canvas.', type: 'success' }]);
     } catch (e: any) {
@@ -37,12 +65,48 @@ const AIPanel: React.FC<AIPanelProps> = ({ onApplyImage, currentCanvasImage }) =
   };
 
   const handleEdit = async () => {
-    if (!prompt.trim()) return;
     setLoading(true);
-    setMessages(prev => [...prev, { role: 'user', text: `Edit: ${prompt}` }]);
+    
+    let finalPrompt = prompt;
+    let userDisplay = prompt;
+
+    // Construct prompt based on mode
+    if (editMode === 'replace_obj') {
+        if (!editTarget || !editReplacement) {
+             setMessages(prev => [...prev, { role: 'model', text: 'Please specify both the target object and the replacement.', type: 'error' }]);
+             setLoading(false);
+             return;
+        }
+        finalPrompt = `Replace the ${editTarget} with ${editReplacement}.`;
+        userDisplay = `Replace ${editTarget} with ${editReplacement}`;
+    } else if (editMode === 'replace_bg') {
+        if (!prompt.trim()) {
+            setMessages(prev => [...prev, { role: 'model', text: 'Please describe the new background.', type: 'error' }]);
+            setLoading(false);
+            return;
+        }
+        finalPrompt = `Replace the background with ${prompt}. Keep the foreground objects intact.`;
+        userDisplay = `New Background: ${prompt}`;
+    } else if (editMode === 'transform') {
+         if (!editTarget || !prompt.trim()) {
+             setMessages(prev => [...prev, { role: 'model', text: 'Please specify the object and the transformation description.', type: 'error' }]);
+             setLoading(false);
+             return;
+         }
+         finalPrompt = `Transform the ${editTarget}: ${prompt}.`;
+         userDisplay = `Transform ${editTarget}: ${prompt}`;
+    } else {
+        if (!prompt.trim()) {
+            setLoading(false);
+            return;
+        }
+    }
+
+    setMessages(prev => [...prev, { role: 'user', text: `Edit: ${userDisplay}` }]);
     try {
       const currentImage = currentCanvasImage();
-      const newImage = await editAsset(currentImage, prompt);
+      const seedNum = seed.trim() ? parseInt(seed) : undefined;
+      const newImage = await editAsset(currentImage, finalPrompt, seedNum);
       onApplyImage(newImage);
       setMessages(prev => [...prev, { role: 'model', text: 'Changes applied.', type: 'success' }]);
     } catch (e: any) {
@@ -99,6 +163,10 @@ const AIPanel: React.FC<AIPanelProps> = ({ onApplyImage, currentCanvasImage }) =
     }
   };
 
+  const randomizeSeed = () => {
+      setSeed(Math.floor(Math.random() * 1000000).toString());
+  };
+
   return (
     <div className="w-80 bg-gray-900 border-l border-gray-750 flex flex-col h-full">
       {/* Tabs */}
@@ -139,53 +207,119 @@ const AIPanel: React.FC<AIPanelProps> = ({ onApplyImage, currentCanvasImage }) =
       </div>
 
       {/* Controls */}
-      <div className="p-4 bg-gray-850 border-t border-gray-750">
+      <div className="p-4 bg-gray-850 border-t border-gray-750 space-y-3">
         
+        {/* Generate Options */}
         {activeTab === 'generate' && (
-          <div className="space-y-3 mb-3">
+          <div className="space-y-3">
              <div className="grid grid-cols-2 gap-2">
                 <select 
                   value={aspectRatio} 
                   onChange={(e) => setAspectRatio(e.target.value as AspectRatio)}
                   className="bg-gray-700 text-xs text-white p-2 rounded border border-gray-600 focus:border-indigo-500 outline-none"
                 >
-                  <option value={AspectRatio.SQUARE_1_1}>1:1 (Square)</option>
-                  <option value={AspectRatio.PORTRAIT_9_16}>9:16 (Mobile)</option>
-                  <option value={AspectRatio.LANDSCAPE_16_9}>16:9 (Desktop)</option>
-                  <option value={AspectRatio.PORTRAIT_3_4}>3:4 (Portrait)</option>
-                  <option value={AspectRatio.LANDSCAPE_4_3}>4:3 (Landscape)</option>
+                  <option value={AspectRatio.SQUARE_1_1}>1:1</option>
+                  <option value={AspectRatio.PORTRAIT_9_16}>9:16</option>
+                  <option value={AspectRatio.LANDSCAPE_16_9}>16:9</option>
                 </select>
                 <select 
                   value={imageSize} 
                   onChange={(e) => setImageSize(e.target.value as ImageSize)}
                   className="bg-gray-700 text-xs text-white p-2 rounded border border-gray-600 focus:border-indigo-500 outline-none"
                 >
-                  <option value={ImageSize.SIZE_1K}>1K Standard</option>
-                  <option value={ImageSize.SIZE_2K}>2K High Res</option>
-                  <option value={ImageSize.SIZE_4K}>4K Ultra</option>
+                  <option value={ImageSize.SIZE_1K}>1K</option>
+                  <option value={ImageSize.SIZE_2K}>2K</option>
                 </select>
+             </div>
+             
+             <div>
+                <label className="text-xs text-gray-400 block mb-1">Style</label>
+                <select 
+                  value={selectedStyle} 
+                  onChange={(e) => setSelectedStyle(e.target.value)}
+                  className="w-full bg-gray-700 text-xs text-white p-2 rounded border border-gray-600 focus:border-indigo-500 outline-none"
+                >
+                  {PIXEL_STYLES.map(s => <option key={s.id} value={s.id}>{s.label}</option>)}
+                </select>
+             </div>
+
+             <div className="flex gap-2">
+                 <div className="flex-1">
+                    <label className="text-xs text-gray-400 block mb-1">Seed (Optional)</label>
+                    <div className="flex gap-1">
+                        <input 
+                            type="number" 
+                            value={seed} 
+                            onChange={(e) => setSeed(e.target.value)}
+                            placeholder="Random"
+                            className="w-full bg-gray-700 text-xs text-white p-2 rounded border border-gray-600 focus:border-indigo-500 outline-none"
+                        />
+                        <button onClick={randomizeSeed} className="p-2 bg-gray-700 hover:bg-gray-600 rounded border border-gray-600 text-gray-400">
+                            <Dices size={14} />
+                        </button>
+                    </div>
+                 </div>
+             </div>
+
+             <div>
+                <label className="text-xs text-gray-400 block mb-1">Negative Prompt</label>
+                <input 
+                  type="text" 
+                  value={negativePrompt} 
+                  onChange={(e) => setNegativePrompt(e.target.value)}
+                  placeholder="blurred, low quality, messy"
+                  className="w-full bg-gray-700 text-xs text-white p-2 rounded border border-gray-600 focus:border-indigo-500 outline-none"
+                />
              </div>
           </div>
         )}
 
-        {/* Input Area */}
-        <div className="flex flex-col gap-2">
-           {activeTab === 'edit' && (
+        {/* Edit Options */}
+        {activeTab === 'edit' && (
+           <div className="space-y-3">
+               <div className="flex bg-gray-700 rounded p-1">
+                   <button onClick={() => setEditMode('free')} className={`flex-1 text-xs py-1.5 rounded ${editMode === 'free' ? 'bg-gray-600 text-white' : 'text-gray-400 hover:text-gray-300'}`}>Free</button>
+                   <button onClick={() => setEditMode('replace_obj')} className={`flex-1 text-xs py-1.5 rounded ${editMode === 'replace_obj' ? 'bg-gray-600 text-white' : 'text-gray-400 hover:text-gray-300'}`}>Object</button>
+                   <button onClick={() => setEditMode('replace_bg')} className={`flex-1 text-xs py-1.5 rounded ${editMode === 'replace_bg' ? 'bg-gray-600 text-white' : 'text-gray-400 hover:text-gray-300'}`}>Bg</button>
+                   <button onClick={() => setEditMode('transform')} className={`flex-1 text-xs py-1.5 rounded ${editMode === 'transform' ? 'bg-gray-600 text-white' : 'text-gray-400 hover:text-gray-300'}`}>Trans</button>
+               </div>
+               
+               {editMode === 'replace_obj' && (
+                   <div className="grid grid-cols-2 gap-2">
+                       <input type="text" placeholder="Target (e.g. Cat)" value={editTarget} onChange={(e) => setEditTarget(e.target.value)} className="bg-gray-700 text-xs text-white p-2 rounded border border-gray-600 outline-none"/>
+                       <input type="text" placeholder="Replace with (e.g. Dog)" value={editReplacement} onChange={(e) => setEditReplacement(e.target.value)} className="bg-gray-700 text-xs text-white p-2 rounded border border-gray-600 outline-none"/>
+                   </div>
+               )}
+
+               {editMode === 'transform' && (
+                   <div>
+                       <input type="text" placeholder="Object to transform (e.g. The sword)" value={editTarget} onChange={(e) => setEditTarget(e.target.value)} className="w-full bg-gray-700 text-xs text-white p-2 rounded border border-gray-600 outline-none mb-1"/>
+                   </div>
+               )}
+
                <button 
                   onClick={handleRemoveBackground}
                   disabled={loading}
-                  className="w-full bg-gray-700 hover:bg-gray-600 text-white py-2 rounded text-xs flex items-center justify-center gap-2 border border-gray-600 mb-2"
+                  className="w-full bg-gray-700 hover:bg-gray-600 text-white py-2 rounded text-xs flex items-center justify-center gap-2 border border-gray-600"
                >
                  <Scissors size={14} /> Remove Background
                </button>
-           )}
+           </div>
+        )}
 
+        {/* Prompt Input */}
+        <div className="flex flex-col gap-2">
            <textarea 
              value={prompt}
              onChange={(e) => setPrompt(e.target.value)}
              placeholder={
                 activeTab === 'generate' ? "A cute 8-bit dragon..." :
-                activeTab === 'edit' ? "Change background to lava..." :
+                activeTab === 'edit' ? (
+                    editMode === 'free' ? "Change color to blue..." :
+                    editMode === 'replace_bg' ? "A spooky forest..." :
+                    editMode === 'transform' ? "Make it glow..." :
+                    "Context for edit..."
+                ) :
                 activeTab === 'search' ? "What do dungeon tiles look like?" :
                 "Optional context for analysis..."
              }
