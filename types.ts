@@ -1,3 +1,4 @@
+
 export enum ToolType {
   PENCIL = 'PENCIL',
   ERASER = 'ERASER',
@@ -33,6 +34,12 @@ export interface Frame {
   delay: number; // in ms
 }
 
+export interface Palette {
+  id: string;
+  name: string;
+  colors: string[];
+}
+
 export interface ProjectState {
   width: number;
   height: number;
@@ -46,6 +53,8 @@ export interface ProjectState {
   zoom: number;
   isPlaying: boolean;
   name: string;
+  palettes: Palette[];
+  activePaletteId: string;
 }
 
 export enum AspectRatio {

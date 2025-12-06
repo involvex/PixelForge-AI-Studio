@@ -4,9 +4,10 @@ import EditorCanvas from './components/EditorCanvas';
 import AIPanel from './components/AIPanel';
 import AnimationPanel from './components/AnimationPanel';
 import LayerPanel from './components/LayerPanel';
-import { ToolType, Frame, Layer, ProjectState } from './types';
+import PalettePanel from './components/PalettePanel';
+import { ToolType, Frame, Layer, Palette, ProjectState } from './types';
 import { createEmptyGrid, replaceColor, invertMask, expandMask, contractMask } from './utils/drawingUtils';
-import { Download, Upload, FileJson, Clapperboard, Settings, Image as ImageIcon, Layers, Sparkles, FolderOpen, Save, Archive, FileImage, MousePointer2, Maximize2, Minimize2, ArrowLeftRight, X, Undo, Redo } from 'lucide-react';
+import { Download, Upload, FileJson, Clapperboard, Settings, Image as ImageIcon, Layers, Sparkles, FolderOpen, Save, Archive, FileImage, MousePointer2, Maximize2, Minimize2, ArrowLeftRight, X, Undo, Redo, Palette as PaletteIcon } from 'lucide-react';
 import * as _gifenc from 'gifenc';
 import JSZip from 'jszip';
 
@@ -16,6 +17,18 @@ const { GIFEncoder, quantize, applyPalette } = gifenc;
 
 const DEFAULT_SIZE = 32;
 
+// Default Palette (Pico-8)
+const DEFAULT_PALETTE: Palette = {
+  id: 'default-pico8',
+  name: 'Default (Pico-8)',
+  colors: [
+    '#000000', '#1D2B53', '#7E2553', '#008751',
+    '#AB5236', '#5F574F', '#C2C3C7', '#FFF1E8',
+    '#FF004D', '#FFA300', '#FFEC27', '#00E436',
+    '#29ADFF', '#83769C', '#FF77A8', '#FFCCAA'
+  ]
+};
+
 // History State Interface
 interface HistoryState {
   frames: Frame[];
@@ -24,9 +37,8 @@ interface HistoryState {
   height: number;
   activeLayerId: string;
   currentFrameIndex: number;
-  // We can include selection mask if we want selection persistence across undo, 
-  // but often selections are transient. Let's include it for better UX.
   selectionMask: boolean[][] | null;
+  // We don't typically undo palette changes, but we could. For now, excluding palettes from history.
 }
 
 function App() {
@@ -63,6 +75,10 @@ function App() {
   const [selectionMask, setSelectionMask] = useState<boolean[][] | null>(null);
   const [savedSelections, setSavedSelections] = useState<Record<string, boolean[][]>>({});
 
+  // Palettes
+  const [palettes, setPalettes] = useState<Palette[]>([DEFAULT_PALETTE]);
+  const [activePaletteId, setActivePaletteId] = useState<string>(DEFAULT_PALETTE.id);
+
   // History Stacks
   const [past, setPast] = useState<HistoryState[]>([]);
   const [future, setFuture] = useState<HistoryState[]>([]);
@@ -70,7 +86,7 @@ function App() {
   const [historyVersion, setHistoryVersion] = useState(0);
 
   // Right Sidebar Tab State
-  const [activeRightTab, setActiveRightTab] = useState<'layers' | 'ai'>('layers');
+  const [activeRightTab, setActiveRightTab] = useState<'layers' | 'ai' | 'palettes'>('layers');
 
   // --- Animation Loop ---
   useEffect(() => {
@@ -270,6 +286,31 @@ function App() {
       updateActiveLayerPixels(activeLayerId, newPixels);
   };
 
+  // --- Palette Management ---
+  const handleCreatePalette = (name: string) => {
+    const newPalette: Palette = {
+      id: Date.now().toString(),
+      name,
+      colors: []
+    };
+    setPalettes(prev => [...prev, newPalette]);
+    setActivePaletteId(newPalette.id);
+  };
+
+  const handleDeletePalette = (id: string) => {
+    if (palettes.length <= 1) return;
+    const newPalettes = palettes.filter(p => p.id !== id);
+    setPalettes(newPalettes);
+    if (activePaletteId === id) {
+      setActivePaletteId(newPalettes[0].id);
+    }
+  };
+
+  const handleUpdatePalette = (id: string, colors: string[]) => {
+    setPalettes(prev => prev.map(p => p.id === id ? { ...p, colors } : p));
+  };
+
+
   // --- Layer Management ---
   const handleAddLayer = () => {
       recordHistory();
@@ -308,9 +349,7 @@ function App() {
   };
 
   const handleUpdateLayer = (id: string, updates: Partial<Layer>) => {
-      // Avoid recording history for opacity slider drag (too many events)
-      // We assume if it's visible or locked or name change, we record.
-      // If it's opacity, we skip (or you'd need a way to detect start/end of slide)
+      // Avoid recording history for opacity slider drag
       if (updates.opacity === undefined) {
          recordHistory();
       }
@@ -367,7 +406,6 @@ function App() {
   };
 
   // --- Compositing ---
-  // Helper to draw the composite of a frame to a canvas
   const renderFrameToCanvas = (frame: Frame, ctx: CanvasRenderingContext2D) => {
       ctx.clearRect(0, 0, width, height);
       layers.forEach(layer => {
@@ -402,11 +440,10 @@ function App() {
   // --- AI & Exports ---
 
   const handleApplyAIImage = async (base64: string) => {
-    // Applies the AI image to the ACTIVE layer
     const img = new Image();
     img.src = base64;
     img.onload = () => {
-      recordHistory(); // Record before applying
+      recordHistory();
       const canvas = document.createElement('canvas');
       canvas.width = width;
       canvas.height = height;
@@ -449,14 +486,12 @@ function App() {
       if (!ctx) return;
 
       frames.forEach((frame, idx) => {
-          // Temporarily render frame to a small canvas
           const fCanvas = document.createElement('canvas');
           fCanvas.width = width;
           fCanvas.height = height;
           const fCtx = fCanvas.getContext('2d');
           if (fCtx) {
               renderFrameToCanvas(frame, fCtx);
-              // Draw that canvas onto the sprite sheet
               ctx.drawImage(fCanvas, idx * width, 0);
           }
       });
@@ -486,7 +521,6 @@ function App() {
         const ctx = canvas.getContext('2d', { willReadFrequently: true });
         if(!ctx) continue;
         
-        // Render composite
         renderFrameToCanvas(frame, ctx);
 
         const imageData = ctx.getImageData(0, 0, width, height);
@@ -550,7 +584,9 @@ function App() {
           layers,
           frames,
           activeLayerId,
-          savedSelections
+          savedSelections,
+          palettes,
+          activePaletteId
       };
       
       const blob = new Blob([JSON.stringify(projectData, null, 2)], { type: 'application/json' });
@@ -583,6 +619,14 @@ function App() {
 
                   if (data.savedSelections) {
                       setSavedSelections(data.savedSelections);
+                  }
+
+                  // Load palettes if available
+                  if (data.palettes && Array.isArray(data.palettes)) {
+                      setPalettes(data.palettes);
+                      if (data.activePaletteId) {
+                          setActivePaletteId(data.activePaletteId);
+                      }
                   }
                   
                   setCurrentFrameIndex(0);
@@ -621,8 +665,6 @@ function App() {
               const ctx = canvas.getContext('2d');
               if(!ctx) return;
 
-              // When importing, we'll put everything on the active layer or a new layer.
-              // We'll reset layers to just one for the import.
               const importLayerId = 'layer-import';
               setLayers([{ id: importLayerId, name: 'Imported', visible: true, locked: false, opacity: 1.0 }]);
               setActiveLayerId(importLayerId);
@@ -854,21 +896,30 @@ function App() {
             />
         </div>
 
-        {/* Right Sidebar (Layers & AI) */}
+        {/* Right Sidebar (Layers, AI, Palettes) */}
         <div className="w-80 flex flex-col h-full bg-gray-900 border-l border-gray-750">
             {/* Tabs */}
             <div className="flex border-b border-gray-750 shrink-0">
                 <button 
                   onClick={() => setActiveRightTab('layers')} 
                   className={`flex-1 p-3 flex items-center justify-center gap-2 text-sm font-medium hover:bg-gray-800 transition-colors ${activeRightTab === 'layers' ? 'text-indigo-400 border-b-2 border-indigo-400' : 'text-gray-400'}`}
+                  title="Layers"
                 >
-                   <Layers size={16} /> Layers
+                   <Layers size={16} />
                 </button>
                 <button 
                   onClick={() => setActiveRightTab('ai')} 
                   className={`flex-1 p-3 flex items-center justify-center gap-2 text-sm font-medium hover:bg-gray-800 transition-colors ${activeRightTab === 'ai' ? 'text-indigo-400 border-b-2 border-indigo-400' : 'text-gray-400'}`}
+                  title="AI Studio"
                 >
-                   <Sparkles size={16} /> AI Studio
+                   <Sparkles size={16} />
+                </button>
+                <button 
+                  onClick={() => setActiveRightTab('palettes')} 
+                  className={`flex-1 p-3 flex items-center justify-center gap-2 text-sm font-medium hover:bg-gray-800 transition-colors ${activeRightTab === 'palettes' ? 'text-indigo-400 border-b-2 border-indigo-400' : 'text-gray-400'}`}
+                  title="Palettes"
+                >
+                   <PaletteIcon size={16} />
                 </button>
             </div>
 
@@ -884,8 +935,19 @@ function App() {
                         onUpdateLayer={handleUpdateLayer}
                         onMoveLayer={handleMoveLayer}
                     />
-                ) : (
+                ) : activeRightTab === 'ai' ? (
                     <AIPanel onApplyImage={handleApplyAIImage} currentCanvasImage={getCompositeDataURL} />
+                ) : (
+                    <PalettePanel 
+                        palettes={palettes}
+                        activePaletteId={activePaletteId}
+                        onSelectPalette={setActivePaletteId}
+                        onCreatePalette={handleCreatePalette}
+                        onDeletePalette={handleDeletePalette}
+                        onUpdatePalette={handleUpdatePalette}
+                        primaryColor={primaryColor}
+                        setPrimaryColor={setPrimaryColor}
+                    />
                 )}
             </div>
         </div>
