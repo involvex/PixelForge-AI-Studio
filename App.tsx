@@ -769,6 +769,24 @@ function App() {
     reader.onload = evt => {
       const img = new Image();
       img.onload = () => {
+        // Auto-scale if this is the first import (canvas is default size and empty)
+        if (
+          width === 32 &&
+          height === 32 &&
+          frames.length === 1 &&
+          layers.length === 1 &&
+          frames[0].layers[layers[0].id] &&
+          frames[0].layers[layers[0].id].every(row =>
+            row.every(cell => cell === null),
+          )
+        ) {
+          const newW = img.width;
+          const newH = img.height;
+          setWidth(newW);
+          setHeight(newH);
+          // Re-initialize grid since dimensions changed
+        }
+
         recordHistory();
         const cols = Math.floor(img.width / width);
         const rows = Math.floor(img.height / height);
@@ -942,7 +960,49 @@ function App() {
   }, [performUndo, performRedo, hotkeys, invertSelection, saveProject]);
 
   return (
-    <div className="flex flex-col h-screen bg-gray-950 text-white font-sans">
+    <div
+      className="flex flex-col h-screen bg-gray-950 text-white font-sans"
+      onDragOver={e => e.preventDefault()}
+      onDrop={e => {
+        e.preventDefault();
+        const file = e.dataTransfer.files[0];
+        if (!file) return;
+
+        if (file.name.endsWith(".json")) {
+          const reader = new FileReader();
+          reader.onload = evt => {
+            try {
+              const json = JSON.parse(evt.target?.result as string);
+              // Basic validation
+              if (json.width && json.height && json.frames && json.layers) {
+                if (
+                  confirm(
+                    "Load project from " +
+                      file.name +
+                      "? Unsaved changes will be lost.",
+                  )
+                ) {
+                  setWidth(json.width);
+                  setHeight(json.height);
+                  setFrames(json.frames);
+                  setLayers(json.layers);
+                  setActiveLayerId(json.activeLayerId || json.layers[0]?.id);
+                  setCurrentFrameIndex(0);
+                }
+              }
+            } catch {
+              alert("Invalid project file");
+            }
+          };
+          reader.readAsText(file);
+        } else if (file.type.startsWith("image/")) {
+          // Cast to unknown first to avoid "EventTarget is not ... InputElement" constraint issues if we just cast to ChangeEvent
+          handleImportSpritesheet({
+            target: { files: [file] },
+          } as unknown as React.ChangeEvent<HTMLInputElement>);
+        }
+      }}
+    >
       {/* Top Header */}
       <header className="h-14 border-b border-gray-800 bg-gray-900 flex items-center px-4 justify-between z-20 shrink-0 relative">
         <div className="flex items-center gap-4">

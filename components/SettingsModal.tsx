@@ -258,20 +258,39 @@ const SettingsModal: React.FC<SettingsModalProps> = ({
                   <h4 className="text-sm font-medium text-gray-400 mb-2">
                     Install Custom Theme
                   </h4>
-                  <label className="flex items-center gap-2 px-4 py-2 bg-gray-700 hover:bg-gray-600 rounded text-sm text-gray-200 cursor-pointer w-fit transition-colors">
-                    <Upload size={16} />
-                    <span>Import JSON Theme</span>
-                    <input
-                      type="file"
-                      accept=".json"
-                      className="hidden"
-                      onChange={() =>
-                        alert(
-                          "Custom theme import logic to be implemented via file reader",
-                        )
-                      }
-                    />
-                  </label>
+                  <div className="flex gap-2">
+                    <label className="flex items-center gap-2 px-4 py-2 bg-gray-700 hover:bg-gray-600 rounded text-sm text-gray-200 cursor-pointer w-fit transition-colors">
+                      <Upload size={16} />
+                      <span>Import JSON Theme</span>
+                      <input
+                        type="file"
+                        accept=".json"
+                        className="hidden"
+                        onChange={() =>
+                          alert(
+                            "Custom theme import logic to be implemented via file reader",
+                          )
+                        }
+                      />
+                    </label>
+                    <button
+                      onClick={() => {
+                        const template = JSON.stringify(themes[0], null, 2);
+                        const blob = new Blob([template], {
+                          type: "application/json",
+                        });
+                        const url = URL.createObjectURL(blob);
+                        const a = document.createElement("a");
+                        a.href = url;
+                        a.download = "theme-template.json";
+                        a.click();
+                        URL.revokeObjectURL(url);
+                      }}
+                      className="flex items-center gap-2 px-4 py-2 bg-gray-800 border border-gray-600 hover:bg-gray-700 rounded text-sm text-gray-300 transition-colors"
+                    >
+                      <span>Download Template</span>
+                    </button>
+                  </div>
                 </div>
               </div>
             )}
@@ -310,8 +329,40 @@ const SettingsModal: React.FC<SettingsModalProps> = ({
 
             {activeTab === "plugins" && (
               <div className="space-y-4">
-                <h3 className="text-sm font-bold text-gray-300 uppercase tracking-wider mb-4 border-b border-gray-700 pb-2">
-                  Plugin Manager
+                <h3 className="text-sm font-bold text-gray-300 uppercase tracking-wider mb-4 border-b border-gray-700 pb-2 flex justify-between items-center">
+                  <span>Plugin Manager</span>
+                  <button
+                    onClick={() => {
+                      const template = `// @name My Plugin
+// @version 1.0
+// @description A sample plugin template
+
+// This function is called when the plugin is loaded
+function activate(api) {
+    console.log("My Plugin Activated");
+    
+    // Example: Add a tool or modify state
+    // api.registerTool(...)
+}
+
+// This function is called when the plugin is disabled
+function deactivate(api) {
+    console.log("My Plugin Deactivated");
+}`;
+                      const blob = new Blob([template], {
+                        type: "text/javascript",
+                      });
+                      const url = URL.createObjectURL(blob);
+                      const a = document.createElement("a");
+                      a.href = url;
+                      a.download = "plugin-template.js";
+                      a.click();
+                      URL.revokeObjectURL(url);
+                    }}
+                    className="text-xs text-indigo-400 hover:text-indigo-300 border border-indigo-900/50 px-2 py-1 rounded hover:bg-indigo-900/20 transition-colors"
+                  >
+                    Download Template
+                  </button>
                 </h3>
 
                 <div className="flex justify-end mb-4">

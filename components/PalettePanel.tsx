@@ -97,17 +97,23 @@ const PalettePanel: React.FC<PalettePanelProps> = ({
         <div className="bg-gray-800 rounded p-3 border border-gray-700 min-h-[100px]">
           <div className="grid grid-cols-6 gap-2">
             {activePalette?.colors.map(color => (
-              <button
-                type="button"
+              <div
+                role="button"
+                tabIndex={0}
                 key={color}
                 className="group relative w-full pt-[100%] rounded cursor-pointer border border-gray-600 hover:border-white transition-all shadow-sm"
                 style={{ backgroundColor: color }}
                 onClick={() => setPrimaryColor(color)}
+                onKeyDown={e => {
+                  if (e.key === "Enter" || e.key === " ") {
+                    setPrimaryColor(color);
+                  }
+                }}
                 title={color}
               >
                 {/* Delete overlay */}
                 <button
-                  title="button"
+                  title="Delete Color"
                   type="button"
                   onClick={e => {
                     e.stopPropagation();
@@ -122,7 +128,7 @@ const PalettePanel: React.FC<PalettePanelProps> = ({
                     <div className="w-1.5 h-1.5 bg-white rounded-full shadow-sm drop-shadow-md" />
                   </div>
                 )}
-              </button>
+              </div>
             ))}
 
             {/* Add Current Color Button */}
