@@ -20,5 +20,18 @@
     },
     "allowImportingTsExtensions": true,
     "noEmit": true
-  }
+  },
+  "include": [
+    "src/**/*",
+    "components/**/*",
+    "services/**/*",
+    "utils/**/*",
+    "types/**/*",
+    "scripts/**/*",
+    "App.tsx",
+    "index.tsx",
+    "index.html",
+    "vite.config.ts"
+  ],
+  "exclude": ["electron/**/*", "dist/**/*", "node_modules/**/*"]
 }

@@ -1,0 +1,34 @@
+appId: "com.involvex.pixelforge"
+productName: "PixelforgeAiStudio"
+publish:
+  - provider: "github"
+artifactName: "PixelforgeAiStudio-${version}-${platform}-${arch}.${ext}"
+asarUnpack:
+  - "**/node_modules/**/*"
+compression: "maximum"
+executableName: "PixelforgeAiStudio"
+extraFiles:
+  - from: "dist-electron/.icon-ico/icon.ico"
+    to: "."
+
+files:
+  - "dist/**/*"
+  - "package.json"
+  - "public/**/*"
+  - "electron-builder.yml"
+
+icon: "dist-electron/.icon-ico/icon.ico"
+nsis:
+  oneClick: false
+  allowToChangeInstallationDirectory: true
+
+win:
+  icon: "dist-electron/.icon-ico/icon.ico"
+  target:
+    - target: "nsis"
+      arch: "x64"
+    - target: "portable"
+      arch: "x64"
+  verifyUpdateCodeSignature: false
+directories:
+  output: "dist-electron"

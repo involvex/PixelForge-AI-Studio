@@ -10,7 +10,23 @@ dotenv.config({ path: path.resolve(__dirname, ".env") });
 export default defineConfig(({ mode }) => {
   const env = loadEnv(mode, ".", "");
 
+  // Determine base path for different deployment targets
+  const isGitHubPages = env.GITHUB_ACTIONS === "true";
+  const isElectronBuild =
+    env.ELECTRON === "true" || process.env.ELECTRON === "true";
+  const repoName = env.GITHUB_REPOSITORY || "pixelforge-ai-studio";
+  const repoParts = repoName.split("/");
+
+  let basePath = "/";
+  if (isGitHubPages && repoParts.length > 1) {
+    basePath = `/${repoParts[1]}/`;
+  } else if (isElectronBuild || mode === "production") {
+    // Use relative paths for Electron builds or production to work with loadFile()
+    basePath = "./";
+  }
+
   return {
+    base: basePath,
     server: {
       port: 3005,
       host: "0.0.0.0",
@@ -21,6 +37,7 @@ export default defineConfig(({ mode }) => {
       outDir: "dist",
       emptyOutDir: true,
       sourcemap: mode === "development",
+      assetsDir: __dirname + "/dist/assets",
       minify: mode === "production" ? "esbuild" : false,
       rollupOptions: {
         output: {
@@ -60,6 +77,10 @@ export default defineConfig(({ mode }) => {
         env.API_KEY || env.GEMINI_API_KEY || env.VITE_GEMINI_API_KEY,
       ),
       "process.env.GEMINI_API_KEY": JSON.stringify(env.GEMINI_API_KEY),
+      "process.env.GITHUB_REPOSITORY": JSON.stringify(repoName),
+      "process.env.GITHUB_ACTIONS": JSON.stringify(
+        env.GITHUB_ACTIONS || "false",
+      ),
       secure: false,
       cache: true,
       RollupCache: {} as RollupCache,

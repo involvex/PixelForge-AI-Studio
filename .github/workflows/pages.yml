@@ -35,19 +35,21 @@ jobs:
           node-version: "20"
       - name: Setup Repository
         uses: actions/checkout@v4
-      - name: Build project
-        run: |
-          npm install
-          npm run build
-      #   - name: Checkout
-      #     uses: actions/checkout@v4
       - name: Setup Pages
         uses: actions/configure-pages@v5
+      - name: Build project
+        env:
+          GITHUB_ACTIONS: true
+          GITHUB_REPOSITORY: ${{ github.repository }}
+          NODE_ENV: production
+        run: |
+          npm install
+          npm run build:gh-pages
       - name: Upload artifact
         uses: actions/upload-pages-artifact@v3
         with:
-          # Upload entire repository
-          path: "."
+          # Upload only the dist directory for GitHub Pages
+          path: "dist"
       - name: Deploy to GitHub Pages
         id: deployment
         uses: actions/deploy-pages@v4
