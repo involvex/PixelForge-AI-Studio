@@ -57,7 +57,10 @@ let appSettings = loadSettings();
 function createTray() {
   try {
     // Try to create a fallback icon if the icon file doesn't exist
-    const iconPath = process.cwd() + "/dist-electron/.icon-ico/icon.ico";
+    // Use favicon.png from public (dev) or dist (prod)
+    const iconPath = isDev
+      ? path.join(process.cwd(), "public/favicon.png")
+      : path.join(electron.app.getAppPath(), "dist/favicon.png");
 
     // Create a simple fallback icon using nativeImage
     const fallbackIcon = electron.nativeImage.createFromDataURL(
@@ -136,10 +139,9 @@ function createTray() {
 function createWindow() {
   try {
     console.log("Creating BrowserWindow...");
-    const iconPath = path.join(
-      electron.app.getAppPath(),
-      "dist-electron/.icon-ico/icon.ico",
-    );
+    const iconPath = isDev
+      ? path.join(process.cwd(), "public/favicon.ico")
+      : path.join(electron.app.getAppPath(), "dist/favicon.ico");
     let preloadPath: string;
     if (isDev) {
       preloadPath = path.join(electron.app.getAppPath(), "preload.js");

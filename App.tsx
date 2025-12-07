@@ -57,7 +57,7 @@ import {
   type HotkeyMap,
 } from "./utils/hotkeyUtils";
 import { defaultTheme } from "./utils/themeUtils";
-import isElectron from "is-electron";
+// import isElectron from "is-electron";
 
 const DEFAULT_SIZE = 32;
 
@@ -1048,7 +1048,7 @@ function App() {
                 className="w-full h-full flex items-center justify-center cursor-pointer transition-colors"
               >
                 <img
-                  src={isElectron() ? "./assets/favicon.png" : "favicon.png"}
+                  src={"favicon.png"}
                   alt="Logo"
                   title="PixelForge"
                   aria-label="PixelForge"

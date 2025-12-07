@@ -651,9 +651,7 @@ function deactivate(api) {
                 <div className="py-8 flex flex-col items-center justify-center">
                   <div className="w-20 h-20 bg-indigo-600 rounded-2xl flex items-center justify-center mb-4 shadow-lg shadow-indigo-900/50">
                     <img
-                      src={
-                        isElectron() ? "./assets/favicon.png" : "favicon.png"
-                      }
+                      src="favicon.png"
                       alt="logo"
                       className="w-full h-full"
                     />
@@ -676,10 +674,14 @@ function deactivate(api) {
                     <span className="text-gray-200 font-mono">Dev</span>
                   </div>
                   <div className="flex justify-between text-sm">
-                    <span className="text-gray-500">Electron</span>
-                    <span className="text-gray-200 font-mono">
-                      {version.version}
-                    </span>
+                    {isElectron() && (
+                      <>
+                        <span className="text-gray-500">Electron</span>
+                        <span className="text-gray-200 font-mono">
+                          electron.{version.version}
+                        </span>
+                      </>
+                    )}
                   </div>
                   <div className="flex justify-between text-sm">
                     <a

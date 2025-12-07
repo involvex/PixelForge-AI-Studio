@@ -78,17 +78,10 @@
     "wait-on": "^9.0.3"
   },
   "files": [
-    "favicon.png",
-    "dist/assets/favicon.png",
-    "dist/assets/favicon-Bgtusp4x.png",
-    "./favicon.png",
     "/dist/**/*"
   ],
   "build": {
     "version": "0.0.3",
-    "icon": "favicon.png",
-    "include": [
-      "favicon.png"
-    ]
+    "icon": "favicon.png"
   }
 }
