@@ -7,6 +7,7 @@ A professional-grade 2D pixel art and spritesheet editor powered by Google Gemin
 ## 🌟 Features
 
 ### Core Editing Tools
+
 - **Pixel-Perfect Canvas**: Create detailed pixel art with precision tools
 - **Layer System**: Organize your artwork with multiple layers
 - **Animation Timeline**: Create frame-by-frame animations with playback controls
@@ -14,6 +15,7 @@ A professional-grade 2D pixel art and spritesheet editor powered by Google Gemin
 - **Palette Management**: Support for custom color palettes with the classic Pico-8 palette included
 
 ### AI-Powered Features
+
 - **Text-to-Image Generation**: Generate pixel art from descriptive prompts
 - **Smart Editing**: AI-powered object replacement, background changes, and transformations
 - **Asset Analysis**: Get AI insights about your artwork
@@ -21,6 +23,7 @@ A professional-grade 2D pixel art and spritesheet editor powered by Google Gemin
 - **Multiple Art Styles**: Support for 8-bit, 16-bit, isometric, cyberpunk, and more styles
 
 ### Export Options
+
 - **Single Frame**: Export individual frames as PNG
 - **Animated GIFs**: Create animated GIFs from your sequences
 - **Spritesheets**: Generate optimized spritesheets for game development
@@ -28,36 +31,42 @@ A professional-grade 2D pixel art and spritesheet editor powered by Google Gemin
 - **Project Files**: Save and load complete projects in JSON format
 
 ### Import Capabilities
+
 - **Spritesheet Import**: Import and slice existing spritesheets
 - **Project Loading**: Load previously saved PixelForge projects
 
 ## 🚀 Quick Start
 
 ### Prerequisites
-- Node.js 18+ 
+
+- Node.js 18+
 - npm or yarn
 - Google Gemini API key (for AI features)
 
 ### Installation
 
 1. **Clone the repository**
+
    ```bash
    git clone https://github.com/Involvex/pixelforge-ai-studio.git
    cd pixelforge-ai-studio
    ```
 
 2. **Install dependencies**
+
    ```bash
    npm install
    ```
 
 3. **Set up environment variables**
    Create a `.env` file in the root directory:
+
    ```env
    GEMINI_API_KEY=your_gemini_api_key_here
    ```
 
 4. **Start the development server**
+
    ```bash
    npm run dev
    ```
@@ -109,6 +118,7 @@ npm run preview
 ### AI Features Guide
 
 #### Text-to-Image Generation
+
 1. Open the AI panel (right sidebar)
 2. Select the "Generate" tab
 3. Enter a descriptive prompt (e.g., "A cute 8-bit dragon")
@@ -116,6 +126,7 @@ npm run preview
 5. Click "Generate Asset" to create new artwork
 
 #### Smart Editing
+
 1. Switch to the "Edit" tab in the AI panel
 2. Choose an editing mode:
    - **Free**: General modifications based on your prompt
@@ -125,10 +136,12 @@ npm run preview
 3. Enter your prompt and click "Magic Edit"
 
 #### Asset Analysis
+
 - Use the "Analyze" tab to get AI feedback on your artwork
 - The AI can suggest improvements, identify elements, and provide creative insights
 
 #### Inspiration Search
+
 - Use the "Search" tab to find design ideas and reference materials
 - Enter queries like "dungeon tiles" or "pixel art characters" for inspiration
 
@@ -199,6 +212,7 @@ pixelforge-ai-studio/
 ### State Management
 
 The application uses React's built-in state management with:
+
 - **Local State**: Component-level state for UI interactions
 - **History System**: Undo/redo functionality with state snapshots
 - **Project State**: Centralized state for canvas, layers, and frames
@@ -206,6 +220,7 @@ The application uses React's built-in state management with:
 ### AI Integration
 
 The AI features are powered by Google Gemini API:
+
 - **Image Generation**: Creates new pixel art from text prompts
 - **Image Editing**: Modifies existing artwork based on instructions
 - **Asset Analysis**: Provides feedback and suggestions
@@ -234,6 +249,7 @@ The AI features are powered by Google Gemini API:
 ### Code Style
 
 The project uses:
+
 - **ESLint**: Code linting with React and TypeScript rules
 - **Prettier**: Code formatting
 - **TypeScript**: Type safety and better development experience
@@ -274,6 +290,7 @@ NODE_ENV=development
 ### Build Configuration
 
 The project uses Vite for build configuration. Key settings:
+
 - **Port**: 3005 (development)
 - **Output Directory**: `dist/`
 - **Module Preloading**: Enabled for production
@@ -284,10 +301,11 @@ The project uses Vite for build configuration. Key settings:
 ### Adding New Tools
 
 1. Define the tool in `types.ts`:
+
    ```typescript
    export enum ToolType {
      // ... existing tools
-     NEW_TOOL = "NEW_TOOL"
+     NEW_TOOL = "NEW_TOOL",
    }
    ```
 
@@ -305,6 +323,7 @@ The project uses Vite for build configuration. Key settings:
 ### Custom Palettes
 
 The palette system supports custom color schemes:
+
 1. Use the Palette panel to create new palettes
 2. Import/export palette JSON files
 3. The default Pico-8 palette is included for retro game development
@@ -324,6 +343,7 @@ This project is licensed under the MIT License - see the LICENSE file for detail
 ## 📞 Support
 
 For support, questions, or feature requests:
+
 - Open an issue on GitHub
 - Check the documentation
 - Review the code examples in the components

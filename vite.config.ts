@@ -19,6 +19,21 @@ export default defineConfig(({ mode }) => {
     build: {
       outDir: "dist",
       emptyOutDir: true,
+      sourcemap: mode === "development",
+      minify: mode === "production" ? "esbuild" : false,
+      rollupOptions: {
+        output: {
+          manualChunks: {
+            vendor: ["react", "react-dom"],
+            gemini: ["@google/genai"],
+          },
+          chunkFileNames: "assets/[name]-[hash].js",
+          entryFileNames: "assets/[name]-[hash].js",
+          assetFileNames: "assets/[name]-[hash].[ext]",
+        },
+      },
+      target: "ES2022",
+      reportCompressedSize: false,
       // Ensure proper bundling instead of relying on CDNs
       modulePreload: {
         polyfill: true,
