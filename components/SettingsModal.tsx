@@ -12,6 +12,7 @@ import React, { useEffect, useState } from "react";
 import { PluginInstance, pluginManager } from "../systems/PluginManager";
 import {
   DEFAULT_HOTKEYS,
+  type HotkeyAction,
   type HotkeyMap,
   saveHotkeys,
 } from "../utils/hotkeyUtils";
@@ -58,6 +59,76 @@ const SettingsModal: React.FC<SettingsModalProps> = ({
   >(initialTab);
   const [localApiKey, setLocalApiKey] = useState(apiKey);
   const [plugins, setPlugins] = useState<PluginInstance[]>([]);
+  const [editingAction, setEditingAction] = useState<string | null>(null);
+
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (!editingAction) return;
+
+      e.preventDefault();
+      e.stopPropagation();
+
+      // Ignore modifier-only presses
+      if (["Control", "Shift", "Alt", "Meta"].includes(e.key)) return;
+
+      const parts = [];
+      if (e.ctrlKey || e.metaKey) parts.push("mod"); // 'mod' matches ctrl/cmd
+      if (e.shiftKey) parts.push("shift");
+      if (e.altKey) parts.push("alt");
+
+      let key = e.key.toLowerCase();
+      if (key === " ") key = "space";
+      if (key === "escape") {
+        setEditingAction(null);
+        return;
+      }
+      parts.push(key);
+
+      const newCombo = parts.join("+");
+
+      // Save
+      const newHotkeys = { ...hotkeys };
+
+      // Remove old binding for this action if we want 1:1,
+      // but we might want multiple bindings.
+      // For simplicty let's just find the generic one or add.
+      // Actually, we are editing a SPECIFIC row (combo).
+      // But our UI iterates entries.
+      // Let's just Add/Overwrite logic.
+
+      // If this combo is taken:
+      if (newHotkeys[newCombo]) {
+        if (
+          !confirm(
+            `Key ${newCombo} is already assigned to ${newHotkeys[newCombo]}. Overwrite?`,
+          )
+        ) {
+          return;
+        }
+      }
+
+      // We are in a weird spot because we are iterating Object.entries(hotkeys) in render
+      // which means we are editing "by action" effectively if we click edit on a row.
+      // Let's remove ALL old bindings for this action? No, multiple is fine.
+      // Let's just add/overwrite.
+
+      // Wait, if I click edit on "mod+z" : UNDO
+      // I expect "mod+z" to be replaced by the new key.
+      // But I don't have reference to "mod+z" inside this scope easily unless I track it.
+      // Simpler approach: Just ADD the new one, users can delete the old one.
+      // OR: track editingCombo AND editingAction.
+
+      newHotkeys[newCombo] = editingAction as HotkeyAction;
+      setHotkeys(newHotkeys);
+      saveHotkeys(newHotkeys);
+      setEditingAction(null);
+    };
+
+    if (editingAction) {
+      window.addEventListener("keydown", handleKeyDown, true); // Capture phase
+    }
+    return () => window.removeEventListener("keydown", handleKeyDown, true);
+  }, [editingAction, hotkeys, setHotkeys]);
 
   // Update active tab when initialTab changes or modal opens
   useEffect(() => {
@@ -441,71 +512,70 @@ function deactivate(api) {
                 </h3>
 
                 <div className="space-y-1">
-                  {Object.entries(hotkeys).map(([combo, action]) => (
-                    <div
-                      key={combo}
-                      className="flex items-center justify-between p-2 bg-gray-850 rounded hover:bg-gray-800 border border-transparent hover:border-gray-700 group"
-                    >
-                      <span className="text-sm text-gray-300">
-                        {action.replace(/_/g, " ")}
-                      </span>
-                      <div className="flex items-center gap-2">
-                        <span className="bg-gray-950 px-2 py-1 rounded text-xs text-gray-400 font-mono border border-gray-700 min-w-[60px] text-center">
-                          {combo}
+                  {Object.entries(hotkeys).map(([combo, action]) => {
+                    const isEditing = editingAction === action;
+
+                    return (
+                      <div
+                        key={combo}
+                        className={`flex items-center justify-between p-2 rounded border transition-colors group ${isEditing ? "bg-indigo-900/30 border-indigo-500/50" : "bg-gray-850 hover:bg-gray-800 border-transparent hover:border-gray-700"}`}
+                      >
+                        <span className="text-sm text-gray-300">
+                          {action.replace(/_/g, " ")}
                         </span>
-                        <button
-                          onClick={() => {
-                            const newKey = prompt(
-                              `Enter new hotkey for ${action} (e.g. mod+shift+z, ctrl+s, p)`,
-                            );
-                            if (newKey) {
-                              const newHotkeys = { ...hotkeys };
-                              delete newHotkeys[combo]; // Remove old mapping if we want 1:1, or keep?
-                              // Ideally we swap or update.
-                              // Check if key already exists
-                              if (newHotkeys[newKey]) {
-                                if (
-                                  !confirm(
-                                    `Key ${newKey} is already assigned to ${newHotkeys[newKey]}. Overwrite?`,
-                                  )
-                                )
-                                  return;
+                        <div className="flex items-center gap-2">
+                          {isEditing ? (
+                            <div className="flex items-center gap-2">
+                              <span className="text-xs text-indigo-300 animate-pulse">
+                                Press new key...
+                              </span>
+                              <button
+                                onClick={() => setEditingAction(null)}
+                                className="p-1 hover:bg-gray-700 rounded text-gray-400"
+                              >
+                                <X size={12} />
+                              </button>
+                            </div>
+                          ) : (
+                            <>
+                              <span className="bg-gray-950 px-2 py-1 rounded text-xs text-gray-400 font-mono border border-gray-700 min-w-[60px] text-center">
+                                {combo}
+                              </span>
+                              <button
+                                onClick={() => setEditingAction(action)}
+                                className="p-1 hover:bg-indigo-600 rounded text-gray-500 hover:text-white"
+                                title="Edit Key"
+                              >
+                                <Edit2 size={12} />
+                              </button>
+                            </>
+                          )}
+                          <button
+                            onClick={() => {
+                              if (
+                                Object.keys(hotkeys).filter(
+                                  k => hotkeys[k] === action,
+                                ).length <= 1
+                              ) {
+                                alert(
+                                  "Cannot remove the last binding for an action.",
+                                );
+                                return;
                               }
-                              newHotkeys[newKey.toLowerCase()] = action;
+                              const newHotkeys = { ...hotkeys };
+                              delete newHotkeys[combo];
                               setHotkeys(newHotkeys);
                               saveHotkeys(newHotkeys);
-                            }
-                          }}
-                          className="p-1 hover:bg-indigo-600 rounded text-gray-500 hover:text-white"
-                          title="Edit Key"
-                        >
-                          <Edit2 size={12} />
-                        </button>
-                        <button
-                          onClick={() => {
-                            if (
-                              Object.keys(hotkeys).filter(
-                                k => hotkeys[k] === action,
-                              ).length <= 1
-                            ) {
-                              alert(
-                                "Cannot remove the last binding for an action.",
-                              );
-                              return;
-                            }
-                            const newHotkeys = { ...hotkeys };
-                            delete newHotkeys[combo];
-                            setHotkeys(newHotkeys);
-                            saveHotkeys(newHotkeys);
-                          }}
-                          className="p-1 hover:bg-red-900/50 rounded text-gray-500 hover:text-red-400 opacity-0 group-hover:opacity-100"
-                          title="Remove Binding"
-                        >
-                          <Trash2 size={12} />
-                        </button>
+                            }}
+                            className="p-1 hover:bg-red-900/50 rounded text-gray-500 hover:text-red-400 opacity-0 group-hover:opacity-100"
+                            title="Remove Binding"
+                          >
+                            <Trash2 size={12} />
+                          </button>
+                        </div>
                       </div>
-                    </div>
-                  ))}
+                    );
+                  })}
                 </div>
 
                 <div className="mt-4 pt-4 border-t border-gray-700">

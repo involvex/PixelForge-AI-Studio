@@ -31,7 +31,8 @@
     "start:electron": "npm run compile:electron && cross-env NODE_ENV=development electron dist-electron/main.js",
     "dev:electron": "concurrently \"npm run dev\" \"npm run compile:electron && wait-on http://localhost:3005 && cross-env NODE_ENV=development electron dist/electron/main.js\"",
     "build:electron": "cross-env ELECTRON=true npm run build && npm run compile:electron && electron-builder -c electron-builder.yml",
-    "build:electron:portable": "cross-env ELECTRON=true npm run build && npm run compile:electron && electron-builder --win portable -c electron-builder.yml"
+    "build:electron:portable": "cross-env ELECTRON=true npm run build && npm run compile:electron && electron-builder --win portable -c electron-builder.yml",
+    "prepare": "husky"
   },
   "dependencies": {
     "@google/genai": "^1.31.0",
@@ -63,6 +64,7 @@
     "eslint-plugin-react": "^7.37.5",
     "gh-pages": "^6.3.0",
     "globals": "^16.5.0",
+    "husky": "^9.1.7",
     "prettier": "^3.7.4",
     "prettier-plugin-organize-imports": "^4.3.0",
     "typescript": "~5.8.2",

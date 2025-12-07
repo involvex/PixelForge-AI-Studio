@@ -29,6 +29,7 @@ import AppLoader from "./components/AppLoader";
 import EditorCanvas from "./components/EditorCanvas";
 import ExportModal from "./components/ExportModal";
 import LayerPanel from "./components/LayerPanel";
+import MenuBar from "./components/MenuBar";
 import NetworkStatus from "./components/NetworkStatus";
 import PalettePanel from "./components/PalettePanel";
 import SettingsModal from "./components/SettingsModal";
@@ -175,6 +176,17 @@ function App() {
   >("general");
 
   const [hotkeys, setHotkeys] = useState<HotkeyMap>(getHotkeys());
+
+  const onZoomChange = (newZoom: number | ((prev: number) => number)) => {
+    if (typeof newZoom === "function") {
+      setZoom(prev => {
+        const res = newZoom(prev);
+        return Math.max(1, Math.min(64, res));
+      });
+    } else {
+      setZoom(Math.max(1, Math.min(64, newZoom)));
+    }
+  };
 
   // Layout State
   const [rightSidebarWidth, setRightSidebarWidth] = useState(320);
@@ -651,7 +663,7 @@ function App() {
       const canvas = document.createElement("canvas");
       canvas.width = width;
       canvas.height = height;
-      const ctx = canvas.getContext("2d");
+      const ctx = canvas.getContext("2d", { willReadFrequently: true });
       if (!ctx) return;
 
       ctx.imageSmoothingEnabled = false;
@@ -795,7 +807,7 @@ function App() {
         const canvas = document.createElement("canvas");
         canvas.width = width;
         canvas.height = height;
-        const ctx = canvas.getContext("2d");
+        const ctx = canvas.getContext("2d", { willReadFrequently: true });
         if (!ctx) return;
 
         const importLayerId = "layer-import";
@@ -1005,38 +1017,56 @@ function App() {
     >
       {/* Top Header */}
       <header className="h-14 border-b border-gray-800 bg-gray-900 flex items-center px-4 justify-between z-20 shrink-0 relative">
+        {/* Left: Branding & Menu */}
         <div className="flex items-center gap-4">
           <div className="flex items-center gap-2">
-            <div className="w-8 h-8 bg-gradient-to-tr from-indigo-500 to-purple-500 rounded flex items-center justify-center font-bold text-sm">
+            <div className="w-8 h-8 bg-gradient-to-tr from-indigo-500 to-purple-500 rounded flex items-center justify-center font-bold text-sm shadow-lg">
               P
             </div>
-            <h1 className="font-pixel text-sm tracking-wide text-gray-200 hidden md:block">
-              PixelForge <span className="text-indigo-400">AI</span>
-            </h1>
+            <span className="font-bold text-gray-100 hidden sm:block">
+              PixelForge
+            </span>
           </div>
 
-          <div className="h-6 w-px bg-gray-700 mx-2"></div>
+          <MenuBar
+            onUndo={performUndo}
+            onRedo={performRedo}
+            onCut={() => {}}
+            onCopy={() => {}}
+            onPaste={() => {}}
+            onClear={() => {
+              const currentFrame = frames[currentFrameIndex];
+              if (currentFrame && currentFrame.layers[activeLayerId]) {
+                const newGrid = createEmptyGrid(width, height);
+                updateActiveLayerPixels(activeLayerId, newGrid);
+              }
+            }}
+            onOpenSettings={() => setSettingsTab("general")}
+            setTool={setSelectedTool}
+            setZoom={onZoomChange}
+          />
+        </div>
 
-          <div className="flex items-center gap-2">
-            <button
-              type="button"
-              onClick={performUndo}
-              disabled={past.length === 0}
-              className={`p-1.5 rounded ${past.length === 0 ? "text-gray-600" : "text-gray-400 hover:text-white hover:bg-gray-800"}`}
-              title="Undo (Ctrl+Z)"
-            >
-              <Undo size={16} />
-            </button>
-            <button
-              type="button"
-              onClick={performRedo}
-              disabled={future.length === 0}
-              className={`p-1.5 rounded ${future.length === 0 ? "text-gray-600" : "text-gray-400 hover:text-white hover:bg-gray-800"}`}
-              title="Redo (Ctrl+Y)"
-            >
-              <Redo size={16} />
-            </button>
-          </div>
+        {/* Center: Tools & Settings */}
+        <div className="flex items-center gap-3">
+          <button
+            type="button"
+            onClick={performUndo}
+            disabled={past.length === 0}
+            className={`p-1.5 rounded ${past.length === 0 ? "text-gray-600" : "text-gray-400 hover:text-white hover:bg-gray-800"}`}
+            title="Undo (Ctrl+Z)"
+          >
+            <Undo size={16} />
+          </button>
+          <button
+            type="button"
+            onClick={performRedo}
+            disabled={future.length === 0}
+            className={`p-1.5 rounded ${future.length === 0 ? "text-gray-600" : "text-gray-400 hover:text-white hover:bg-gray-800"}`}
+            title="Redo (Ctrl+Y)"
+          >
+            <Redo size={16} />
+          </button>
 
           <div className="h-6 w-px bg-gray-700 mx-2"></div>
 
@@ -1127,8 +1157,9 @@ function App() {
           />
         </div>
 
+        {/* Right: File Ops */}
         <div className="flex items-center gap-2">
-          {/* Load Selection Dropdown (Only if saved selections exist) */}
+          {/* Load Selection Dropdown */}
           {Object.keys(savedSelections).length > 0 && (
             <div className="relative group">
               <button
