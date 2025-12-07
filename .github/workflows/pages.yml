@@ -32,7 +32,7 @@ jobs:
           - name: Set up Node.js
             uses: actions/setup-node@v6.1.0
             with:
-              node-version: '18'
+              node-version: '20'
 
           - name: Install dependencies
             run: npm install
@@ -45,4 +45,3 @@ jobs:
             with:
                 github_token: ${{ secrets.GITHUB_TOKEN }}
                 publish_dir: ./dist
-                destination_dir: /
