@@ -14,8 +14,8 @@
   "scripts": {
     "start": "cross-env NODE_ENV=development vite",
     "dev": "cross-env NODE_ENV=development vite",
-    "build": "vite build && npm run copy:favicon",
-    "build:production": "npx vite build --mode production && npm run copy:favicon",
+    "build": "vite build",
+    "build:production": "npx vite build --mode production",
     "build:gh-pages": "cross-env GITHUB_ACTIONS=true npm run build:production",
     "preview": "vite preview",
     "lint": "eslint . -c eslint.config.ts --ext .ts,.tsx,.js --ignore-pattern 'dist/**'",
@@ -35,8 +35,7 @@
     "electron:debug": "concurrently \"cross-env NODE_ENV=development NODE_OPTIONS=--inspect\" \"npm run dev:electron\"",
     "prepare": "husky",
     "postinstall": "husky init",
-    "preversion": "npm run format:check && npm run lint:fix && npm run typecheck",
-    "copy:favicon": "copy favicon.png \"dist/assets/favicon.png\""
+    "preversion": "npm run format:check && npm run lint:fix && npm run typecheck"
   },
   "dependencies": {
     "@google/genai": "^1.31.0",
