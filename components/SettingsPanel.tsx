@@ -46,9 +46,18 @@ const SettingsPanel: React.FC<SettingsPanelProps> = ({
           <Minus size={14} />
         </button>
 
-        <span className="text-xs text-gray-200 min-w-[20px] text-center">
-          {gridSize}px
-        </span>
+        <input
+          type="number"
+          min={1}
+          max={64}
+          value={gridSize}
+          onChange={e => {
+            const val = parseInt(e.target.value);
+            if (!isNaN(val)) setGridSize(Math.max(1, Math.min(64, val)));
+          }}
+          className="w-12 bg-transparent text-center text-xs text-gray-200 border-b border-transparent hover:border-gray-500 focus:border-indigo-500 focus:outline-none"
+        />
+        <span className="text-xs text-gray-500 -ml-1">px</span>
 
         <button
           onClick={() => setGridSize(Math.min(64, gridSize + 1))}

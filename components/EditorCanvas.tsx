@@ -37,6 +37,7 @@ interface EditorCanvasProps {
   onDrawStart: () => void;
   historyVersion: number;
   gridSize?: number;
+  onContextMenu?: (e: React.MouseEvent) => void;
 }
 
 interface TransformState {
@@ -73,6 +74,7 @@ const EditorCanvas: React.FC<EditorCanvasProps> = ({
   gridSize = 1,
   gridColor,
   // historyVersion,
+  onContextMenu,
 }) => {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const [isDrawing, setIsDrawing] = useState(false);
@@ -1080,6 +1082,7 @@ const EditorCanvas: React.FC<EditorCanvasProps> = ({
       onTouchStart={handlePointerDown}
       onTouchMove={handlePointerMove}
       onTouchEnd={handlePointerUp}
+      onContextMenu={onContextMenu}
     />
   );
 };

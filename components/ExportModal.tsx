@@ -10,7 +10,7 @@ interface ExportModalProps {
     padding: number,
     format: "png" | "data-uri",
   ) => void;
-  onExportFrame: (scale: number) => void;
+  onExportFrame: (scale: number, format: "png" | "jpeg" | "webp") => void;
 }
 
 const ExportModal: React.FC<ExportModalProps> = ({
@@ -33,7 +33,11 @@ const ExportModal: React.FC<ExportModalProps> = ({
   const [sheetFormat, setSheetFormat] = useState<"png" | "data-uri">("png");
 
   // Frame State
+  // Frame State
   const [frameScale, setFrameScale] = useState(1);
+  const [frameFormat, setFrameFormat] = useState<"png" | "jpeg" | "webp">(
+    "png",
+  );
 
   if (!isOpen) return null;
 
@@ -211,11 +215,28 @@ const ExportModal: React.FC<ExportModalProps> = ({
                 </select>
               </div>
 
+              <div>
+                <label className="block text-xs text-gray-400 mb-1">
+                  Format
+                </label>
+                <select
+                  value={frameFormat}
+                  onChange={e =>
+                    setFrameFormat(e.target.value as "png" | "jpeg" | "webp")
+                  }
+                  className="w-full bg-gray-900 border border-gray-600 rounded px-3 py-2 text-white text-sm focus:border-indigo-500 outline-none"
+                >
+                  <option value="png">PNG (Lossless)</option>
+                  <option value="jpeg">JPEG (Lossy, Small)</option>
+                  <option value="webp">WEBP (Modern)</option>
+                </select>
+              </div>
+
               <button
-                onClick={() => onExportFrame(frameScale)}
+                onClick={() => onExportFrame(frameScale, frameFormat)}
                 className="w-full py-3 bg-indigo-600 hover:bg-indigo-500 text-white rounded font-bold shadow-lg shadow-indigo-900/50 transition-all active:scale-[0.98] mt-4"
               >
-                Download PNG
+                Download Image
               </button>
             </div>
           )}

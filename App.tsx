@@ -32,6 +32,7 @@ import Header from "./components/layout/Header";
 import Sidebar from "./components/layout/Sidebar";
 import LayerPanel from "./components/LayerPanel";
 import MenuBar from "./components/MenuBar";
+import ContextMenu from "./components/ContextMenu";
 import NetworkStatus from "./components/NetworkStatus";
 import PalettePanel from "./components/PalettePanel";
 import SettingsModal from "./components/SettingsModal";
@@ -50,7 +51,6 @@ import {
   createGif,
   createSpriteSheet,
   downloadBlob,
-  framesToDataURL,
   renderFrameToCanvas,
 } from "./utils/exportUtils.ts";
 import {
@@ -134,6 +134,10 @@ function App() {
   const [isPlaying, setIsPlaying] = useState(false);
   const [gridVisible, setGridVisible] = useState(true);
   const [gridSize, setGridSize] = useState(1);
+  const [contextMenu, setContextMenu] = useState<{
+    x: number;
+    y: number;
+  } | null>(null);
 
   // Selection Mask & Saved Selections
   const [selectionMask, setSelectionMask] = useState<boolean[][] | null>(null);
@@ -1126,7 +1130,7 @@ function App() {
                 type="number"
                 value={width}
                 onChange={e => handleResize(Number(e.target.value), height)}
-                className="w-10 bg-gray-900 border border-gray-600 rounded text-xs px-1 text-center text-white"
+                className="w-16 bg-gray-900 border border-gray-600 rounded text-xs px-1 text-center text-white focus:border-indigo-500 focus:outline-none"
               />
               <span className="text-xs text-gray-500">x</span>
               <input
@@ -1134,7 +1138,7 @@ function App() {
                 type="number"
                 value={height}
                 onChange={e => handleResize(width, Number(e.target.value))}
-                className="w-10 bg-gray-900 border border-gray-600 rounded text-xs px-1 text-center text-white"
+                className="w-16 bg-gray-900 border border-gray-600 rounded text-xs px-1 text-center text-white focus:border-indigo-500 focus:outline-none"
               />
             </div>
 
@@ -1447,7 +1451,70 @@ function App() {
                 setSelectionMask={setSelectionMask}
                 onDrawStart={recordHistory}
                 historyVersion={historyVersion}
+                onContextMenu={e => {
+                  e.preventDefault();
+                  setContextMenu({ x: e.clientX, y: e.clientY });
+                }}
               />
+
+              {contextMenu && (
+                <ContextMenu
+                  x={contextMenu.x}
+                  y={contextMenu.y}
+                  onClose={() => setContextMenu(null)}
+                  items={[
+                    {
+                      label: "Undo",
+                      action: performUndo,
+                      shortcut: "Ctrl+Z",
+                      disabled: future.length === 0,
+                    }, // Checking history usually inverse
+                    {
+                      label: "Redo",
+                      action: performRedo,
+                      shortcut: "Ctrl+Y",
+                      disabled: future.length === 0,
+                    },
+                    { separator: true, label: "" },
+                    {
+                      label: "Cut",
+                      action: () => {
+                        /* Implement Cut */
+                      },
+                      shortcut: "Ctrl+X",
+                      disabled: true,
+                    },
+                    {
+                      label: "Copy",
+                      action: () => {
+                        /* Implement Copy */
+                      },
+                      shortcut: "Ctrl+C",
+                      disabled: true,
+                    },
+                    {
+                      label: "Paste",
+                      action: () => {
+                        /* Implement Paste */
+                      },
+                      shortcut: "Ctrl+V",
+                      disabled: true,
+                    },
+                    { separator: true, label: "" },
+                    { label: "Invert Selection", action: invertSelection },
+                    {
+                      label: "Remove Background",
+                      action: () => {
+                        // Simple logic: Clear transparent pixels? Or use magic wand on corner?
+                        // For now, let's just create a placeholder action or clear the layer
+                        alert(
+                          "Background removal requires advanced logic (magic wand). WIP.",
+                        );
+                      },
+                    },
+                  ]}
+                />
+              )}
             </div>
           </div>
 
@@ -1575,17 +1642,16 @@ function App() {
           );
           setShowExport(false);
         }}
-        onExportFrame={() => {
-          framesToDataURL(
-            [frames[currentFrameIndex]],
+        onExportFrame={(scale, format) => {
+          const canvas = renderFrameToCanvas(
+            frames[currentFrameIndex],
             layers,
             width,
             height,
-          ).then((urls: string[]) => {
-            if (urls[0]) {
-              downloadBlob(urls[0], `frame-${currentFrameIndex}.png`);
-            }
-          });
+            scale,
+          );
+          const url = canvas.toDataURL(`image/${format}`);
+          downloadBlob(url, `frame-${currentFrameIndex + 1}.${format}`);
           setShowExport(false);
         }}
       />
