@@ -83,7 +83,6 @@ export default defineConfig(({ mode }) => {
       ),
       secure: false,
       cache: true,
-      RollupCache: {} as RollupCache,
     },
     resolve: {
       alias: {
