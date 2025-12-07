@@ -1,13 +1,12 @@
-
 export enum ToolType {
-  PENCIL = 'PENCIL',
-  ERASER = 'ERASER',
-  BUCKET = 'BUCKET',
-  PICKER = 'PICKER',
-  SELECT = 'SELECT',
-  MAGIC_WAND = 'MAGIC_WAND',
-  MOVE = 'MOVE',
-  TRANSFORM = 'TRANSFORM'
+  PENCIL = "PENCIL",
+  ERASER = "ERASER",
+  BUCKET = "BUCKET",
+  PICKER = "PICKER",
+  SELECT = "SELECT",
+  MAGIC_WAND = "MAGIC_WAND",
+  MOVE = "MOVE",
+  TRANSFORM = "TRANSFORM",
 }
 
 export interface Coordinates {
@@ -30,7 +29,7 @@ export interface Layer {
 export interface Frame {
   id: string;
   // keys are Layer IDs, values are the pixel grids
-  layers: Record<string, (string | null)[][]>; 
+  layers: Record<string, (string | null)[][]>;
   delay: number; // in ms
 }
 
@@ -65,18 +64,18 @@ export enum AspectRatio {
   LANDSCAPE_4_3 = "4:3",
   PORTRAIT_9_16 = "9:16",
   LANDSCAPE_16_9 = "16:9",
-  CINEMATIC_21_9 = "21:9"
+  CINEMATIC_21_9 = "21:9",
 }
 
 export enum ImageSize {
   SIZE_1K = "1K",
   SIZE_2K = "2K",
-  SIZE_4K = "4K"
+  SIZE_4K = "4K",
 }
 
 export interface AIChatMessage {
-  role: 'user' | 'model';
+  role: "user" | "model";
   text: string;
-  type?: 'text' | 'error' | 'success';
-  groundingUrls?: Array<{title: string, uri: string}>;
+  type?: "text" | "error" | "success";
+  groundingUrls?: Array<{ title: string; uri: string }>;
 }

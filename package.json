@@ -1,25 +1,54 @@
 {
   "name": "pixelforge-ai-studio",
+  "description": "A Editor for Pixelbased Assets.",
+  "author": "Involvex",
+  "repository": {
+    "url": "git+https//github.com/Involvex/pixelforge-ai-studio",
+    "type": "git"
+  },
+  "license": "MIT",
   "private": true,
   "version": "0.0.0",
   "type": "module",
   "scripts": {
-    "dev": "vite",
+    "start": "cross-env NODE_ENV=development && vite",
+    "dev": "cross-env NODE_ENV=development && vite",
     "build": "vite build",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "lint": "eslint . -c eslint.config.ts --ext .ts,.tsx,.js --ignore-pattern 'dist/**'",
+    "lint:fix": "eslint . -c eslint.config.ts --ext .ts,.tsx,.js --fix --ignore-pattern 'dist/**'",
+    "format": "prettier --write .",
+    "typecheck": "tsc --noEmit",
+    "format:check": "prettier --check .",
+    "prebuild": "npm run lint && npm run typecheck && npm run format"
   },
   "dependencies": {
-    "react": "^19.2.1",
-    "react-dom": "^19.2.1",
     "@google/genai": "^1.31.0",
+    "cross-env": "^10.1.0",
+    "dotenv": "^17.2.3",
+    "gifenc": "^1.0.3",
+    "jiti": "^2.6.1",
+    "jszip": "3.10.1",
     "lucide-react": "^0.556.0",
-    "gifenc": "1.0.3",
-    "jszip": "3.10.1"
+    "react": "^19.2.1",
+    "react-dom": "^19.2.1"
   },
   "devDependencies": {
+    "@eslint/css": "^0.14.1",
+    "@eslint/js": "^9.39.1",
+    "@eslint/json": "^0.14.0",
     "@types/node": "^22.14.0",
+    "@types/react": "^19.2.7",
+    "@types/react-dom": "^19.2.3",
     "@vitejs/plugin-react": "^5.0.0",
+    "eslint": "^9.39.1",
+    "eslint-plugin-html": "^8.1.3",
+    "eslint-plugin-no-unused-expressions": "^0.1.0",
+    "eslint-plugin-react": "^7.37.5",
+    "globals": "^16.5.0",
+    "prettier": "^3.7.4",
     "typescript": "~5.8.2",
+    "typescript-eslint": "^8.48.1",
     "vite": "^6.2.0"
   }
 }
