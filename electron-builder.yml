@@ -5,16 +5,26 @@ publish:
 artifactName: "PixelforgeAiStudio-${version}-${platform}-${arch}.${ext}"
 asarUnpack:
   - "**/node_modules/**/*"
+  - "favicon.png"
+  - "favicon.ico"
+  - "dist/assets/favicon.png"
+  - "/assets/favicon.png"
 compression: "maximum"
 executableName: "PixelforgeAiStudio"
 extraFiles:
   - from: "dist-electron/.icon-ico/icon.ico"
+    to: "."
+  - from: "favicon.png"
+    to: "."
+  - from: "favicon.ico"
     to: "."
 
 files:
   - "dist/**/*"
   - "package.json"
   - "public/**/*"
+  - "favicon.png"
+  - "favicon.ico"
   - "electron-builder.yml"
 
 icon: "dist-electron/.icon-ico/icon.ico"

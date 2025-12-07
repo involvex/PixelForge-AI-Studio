@@ -14,8 +14,8 @@
   "scripts": {
     "start": "cross-env NODE_ENV=development vite",
     "dev": "cross-env NODE_ENV=development vite",
-    "build": "vite build",
-    "build:production": "npx vite build --mode production",
+    "build": "vite build && npm run copy:favicon",
+    "build:production": "npx vite build --mode production && npm run copy:favicon",
     "build:gh-pages": "cross-env GITHUB_ACTIONS=true npm run build:production",
     "preview": "vite preview",
     "lint": "eslint . -c eslint.config.ts --ext .ts,.tsx,.js --ignore-pattern 'dist/**'",
@@ -28,22 +28,28 @@
     "predeploy": "npm run build",
     "deploy": "gh-pages -d dist",
     "compile:electron": "tsc -p tsconfig.electron.json && tsc -p tsconfig.preload.json",
-    "start:electron": "npm run compile:electron && cross-env NODE_ENV=development electron dist-electron/main.js",
+    "start:electron": "npm run compile:electron && cross-env NODE_ENV=development electron dist/electron/main.js",
     "dev:electron": "concurrently \"npm run dev\" \"npm run compile:electron && wait-on http://localhost:3005 && cross-env NODE_ENV=development electron dist/electron/main.js\"",
     "build:electron": "cross-env ELECTRON=true npm run build && npm run compile:electron && electron-builder -c electron-builder.yml",
     "build:electron:portable": "cross-env ELECTRON=true npm run build && npm run compile:electron && electron-builder --win portable -c electron-builder.yml",
-    "prepare": "husky"
+    "electron:debug": "concurrently \"cross-env NODE_ENV=development NODE_OPTIONS=--inspect\" \"npm run dev:electron\"",
+    "prepare": "husky",
+    "postinstall": "husky init",
+    "preversion": "npm run format:check && npm run lint:fix && npm run typecheck",
+    "copy:favicon": "copy favicon.png \"dist/assets/favicon.png\""
   },
   "dependencies": {
     "@google/genai": "^1.31.0",
     "cross-env": "^10.1.0",
     "dotenv": "^17.2.3",
     "gifenc": "^1.0.3",
+    "is-electron": "^2.2.2",
     "jiti": "^2.6.1",
     "jszip": "3.10.1",
     "lucide-react": "^0.556.0",
     "react": "^19.2.1",
-    "react-dom": "^19.2.1"
+    "react-dom": "^19.2.1",
+    "update-electron-app": "^3.1.2"
   },
   "devDependencies": {
     "@eslint/css": "^0.14.1",
@@ -71,5 +77,19 @@
     "typescript-eslint": "^8.48.1",
     "vite": "^6.2.0",
     "wait-on": "^9.0.3"
+  },
+  "files": [
+    "favicon.png",
+    "dist/assets/favicon.png",
+    "dist/assets/favicon-Bgtusp4x.png",
+    "./favicon.png",
+    "/dist/**/*"
+  ],
+  "build": {
+    "version": "0.0.3",
+    "icon": "favicon.png",
+    "include": [
+      "favicon.png"
+    ]
   }
 }

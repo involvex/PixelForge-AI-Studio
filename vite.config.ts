@@ -3,7 +3,7 @@ import dotenv from "dotenv";
 import path from "node:path";
 import nodeenv from "node:process";
 import { defineConfig, loadEnv } from "vite";
-
+const __dirname = nodeenv.cwd();
 dotenv.config({ path: path.resolve(__dirname, ".env") });
 
 export default defineConfig(({ mode }) => {
@@ -36,7 +36,7 @@ export default defineConfig(({ mode }) => {
       outDir: "dist",
       emptyOutDir: true,
       sourcemap: mode === "development",
-      assetsDir: __dirname + "/dist/assets",
+      assetsDir: __dirname + "/assets",
       minify: mode === "production" ? "esbuild" : false,
       rollupOptions: {
         output: {
@@ -44,6 +44,7 @@ export default defineConfig(({ mode }) => {
             vendor: ["react", "react-dom"],
             gemini: ["@google/genai"],
           },
+          preloadFileName: "dist/electron/preload.js",
           chunkFileNames: "assets/[name]-[hash].js",
           entryFileNames: "assets/[name]-[hash].js",
           assetFileNames: "assets/[name]-[hash].[ext]",

@@ -104,6 +104,11 @@ const EditorCanvas: React.FC<EditorCanvasProps> = ({
     state: TransformState;
   } | null>(null);
 
+  const [selectionStart, setSelectionStart] = useState<Coordinates | null>(
+    null,
+  );
+  const [selectionEnd, setSelectionEnd] = useState<Coordinates | null>(null);
+
   // Reset transient states when history changes (e.g. undo/redo)
   useEffect(() => {
     setTransformState(null);
@@ -117,6 +122,8 @@ const EditorCanvas: React.FC<EditorCanvasProps> = ({
     setIsDrawing(false);
     setActiveHandle(null);
     setTransformStart(null);
+    setSelectionStart(null);
+    setSelectionEnd(null);
   }, []);
 
   // Zoom Interaction (Ctrl + Wheel)
@@ -443,6 +450,29 @@ const EditorCanvas: React.FC<EditorCanvasProps> = ({
       ctx.stroke();
       ctx.setLineDash([]);
     }
+
+    // 6. Draw Rectangle Selection Preview
+    if (
+      selectedTool === ToolType.SELECT &&
+      isDrawing &&
+      selectionStart &&
+      selectionEnd
+    ) {
+      const minX = Math.min(selectionStart.x, selectionEnd.x);
+      const minY = Math.min(selectionStart.y, selectionEnd.y);
+      const w = Math.abs(selectionEnd.x - selectionStart.x) + 1;
+      const h = Math.abs(selectionEnd.y - selectionStart.y) + 1;
+
+      ctx.strokeStyle = "#fff";
+      ctx.setLineDash([4, 4]);
+      ctx.lineWidth = 1;
+      ctx.strokeRect(minX * zoom, minY * zoom, w * zoom, h * zoom);
+
+      ctx.fillStyle = "rgba(100, 150, 255, 0.2)";
+      ctx.fillRect(minX * zoom, minY * zoom, w * zoom, h * zoom);
+
+      ctx.setLineDash([]);
+    }
   }, [
     layers,
     layerPixels,
@@ -458,6 +488,8 @@ const EditorCanvas: React.FC<EditorCanvasProps> = ({
     floatingOffset,
     transformState,
     panOffset,
+    selectionStart,
+    selectionEnd,
   ]);
 
   const handlePointerDown = (e: React.MouseEvent | React.TouchEvent) => {
@@ -705,6 +737,14 @@ const EditorCanvas: React.FC<EditorCanvasProps> = ({
       return;
     }
 
+    if (selectedTool === ToolType.SELECT) {
+      setSelectionStart(coords);
+      setSelectionEnd(coords);
+      setSelectionMask(null);
+      setIsDrawing(true);
+      return;
+    }
+
     // Standard Drawing Tools
     // Don't record history for PICKER or SELECT since they don't modify pixels directly/destructively in a way we want to revert stroke-by-stroke usually?
     // Wait, SELECT modifies selection mask. We do want undo for selection changes.
@@ -859,13 +899,17 @@ const EditorCanvas: React.FC<EditorCanvasProps> = ({
       handleDraw(e);
     }
 
-    if (isDrawing && selectedTool === ToolType.LASSO && coords) {
+    if (isDrawing && (selectedTool as ToolType) === ToolType.LASSO && coords) {
       // Debounce? No, just add point if different
       setLassoPoints(prev => {
         const last = prev[prev.length - 1];
         if (last && last.x === coords.x && last.y === coords.y) return prev;
         return [...prev, coords];
       });
+    }
+
+    if (isDrawing && selectedTool === ToolType.SELECT && coords) {
+      setSelectionEnd(coords);
     }
   };
 
@@ -911,6 +955,34 @@ const EditorCanvas: React.FC<EditorCanvasProps> = ({
         setSelectionMask(mask);
       }
       setLassoPoints([]);
+      setIsDrawing(false);
+      return;
+    }
+
+    if (
+      selectedTool === ToolType.SELECT &&
+      isDrawing &&
+      selectionStart &&
+      selectionEnd
+    ) {
+      const minX = Math.min(selectionStart.x, selectionEnd.x);
+      const minY = Math.min(selectionStart.y, selectionEnd.y);
+      const maxX = Math.max(selectionStart.x, selectionEnd.x);
+      const maxY = Math.max(selectionStart.y, selectionEnd.y);
+
+      const newMask = Array(height)
+        .fill(false)
+        .map(() => Array(width).fill(false));
+      for (let y = minY; y <= maxY; y++) {
+        for (let x = minX; x <= maxX; x++) {
+          if (x >= 0 && x < width && y >= 0 && y < height) {
+            newMask[y][x] = true;
+          }
+        }
+      }
+      setSelectionMask(newMask);
+      setSelectionStart(null);
+      setSelectionEnd(null);
       setIsDrawing(false);
       return;
     }

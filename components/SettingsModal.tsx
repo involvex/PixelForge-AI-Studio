@@ -40,6 +40,8 @@ interface SettingsModalProps {
     | "repo"
     | "hotkeys";
 }
+import version from "../package.json";
+import isElectron from "is-electron";
 
 const SettingsModal: React.FC<SettingsModalProps> = ({
   isOpen,
@@ -203,7 +205,7 @@ const SettingsModal: React.FC<SettingsModalProps> = ({
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm">
-      <div className="bg-gray-800 w-[1000px] h-[800px] rounded-lg shadow-2xl border border-gray-700 flex flex-col overflow-hidden animate-in zoom-in-95 duration-200">
+      <div className="bg-gray-800 p-1 md:p-2 lg:p-4 max-w-[1000px] max-h-[800px] min-w-[600px] min-h-[600px] rounded-lg shadow-2xl border border-gray-700 flex flex-col overflow-hidden animate-in zoom-in-95 duration-200">
         {/* Header */}
         <div className="h-14 border-b border-gray-700 flex items-center justify-between px-6 bg-gray-900">
           <h2 className="text-lg font-bold text-white">Settings</h2>
@@ -648,7 +650,13 @@ function deactivate(api) {
               <div className="space-y-6 text-center">
                 <div className="py-8 flex flex-col items-center justify-center">
                   <div className="w-20 h-20 bg-indigo-600 rounded-2xl flex items-center justify-center mb-4 shadow-lg shadow-indigo-900/50">
-                    <span className="font-pixel text-4xl text-white">P</span>
+                    <img
+                      src={
+                        isElectron() ? "./assets/favicon.png" : "favicon.png"
+                      }
+                      alt="logo"
+                      className="w-full h-full"
+                    />
                   </div>
                   <h2 className="text-2xl font-bold text-white mb-1">
                     PixelForge AI
@@ -659,7 +667,9 @@ function deactivate(api) {
                 <div className="bg-gray-850 p-4 rounded-lg border border-gray-700 text-left space-y-2">
                   <div className="flex justify-between text-sm">
                     <span className="text-gray-500">Version</span>
-                    <span className="text-gray-200 font-mono">0.0.1-alpha</span>
+                    <span className="text-gray-200 font-mono">
+                      {version.version}
+                    </span>
                   </div>
                   <div className="flex justify-between text-sm">
                     <span className="text-gray-500">Build</span>
@@ -667,11 +677,60 @@ function deactivate(api) {
                   </div>
                   <div className="flex justify-between text-sm">
                     <span className="text-gray-500">Electron</span>
-                    <span className="text-gray-200 font-mono">31.0.0</span>
+                    <span className="text-gray-200 font-mono">
+                      {version.version}
+                    </span>
                   </div>
                   <div className="flex justify-between text-sm">
-                    <span className="text-gray-500">Author</span>
-                    <span className="text-gray-200">Involvex</span>
+                    <a
+                      href="https://github.com/involvex"
+                      target="_blank"
+                      rel="noreferrer"
+                      className="text-gray-500 hover:text-gray-400 transition-colors"
+                      aria-label="Author GitHub Profile"
+                      title="Author GitHub Profile"
+                    >
+                      <span className="text-green-500">Author:</span>
+                      <span className="text-green-200 hover:text-green-800 transition-colors">
+                        &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; Involvex
+                      </span>
+                    </a>
+                  </div>
+                  <div className="flex justify-between text-sm">
+                    <a
+                      href="https://github.com/sponsors/involvex"
+                      target="_blank"
+                      rel="noreferrer"
+                      className="text-orange-500 hover:text-orange-400 transition-colors"
+                      aria-label="Support on GitHub Sponsor"
+                      title="Support on GitHub Sponsor"
+                    >
+                      Support on GitHub Sponsor
+                    </a>
+                  </div>
+                  <div className="flex justify-between text-sm">
+                    <a
+                      href="https://paypal.me/involvex"
+                      target="_blank"
+                      rel="noreferrer"
+                      className="text-blue-500 hover:text-blue-400 transition-colors"
+                      aria-label="Support on PayPal"
+                      title="Support on PayPal"
+                    >
+                      Support on PayPal
+                    </a>
+                  </div>
+                  <div className="flex justify-between text-sm">
+                    <a
+                      href="https://buymeacoffee.com/involvex"
+                      target="_blank"
+                      rel="noreferrer"
+                      className="text-yellow-500 hover:text-yellow-400 transition-colors"
+                      aria-label="Support on BuyMeACoffee"
+                      title="Support on BuyMeACoffee"
+                    >
+                      Support on BuyMeACoffee
+                    </a>
                   </div>
                 </div>
 

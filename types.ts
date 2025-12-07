@@ -87,4 +87,8 @@ export interface AppSettings {
   minimizeToTray: boolean;
 }
 
+export interface Favicon {
+  favicon: Promise<string>;
+}
+
 export default AppSettings;

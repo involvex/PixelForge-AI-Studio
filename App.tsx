@@ -57,6 +57,7 @@ import {
   type HotkeyMap,
 } from "./utils/hotkeyUtils";
 import { defaultTheme } from "./utils/themeUtils";
+import isElectron from "is-electron";
 
 const DEFAULT_SIZE = 32;
 
@@ -625,10 +626,7 @@ function App() {
 
   const saveSelection = () => {
     if (!selectionMask) return;
-    const name = prompt(
-      "Enter a name for this selection mask:",
-      `Selection ${Object.keys(savedSelections).length + 1}`,
-    );
+    const name = `Selection ${Object.keys(savedSelections).length + 1}`;
     if (name) {
       setSavedSelections(prev => ({
         ...prev,
@@ -781,37 +779,44 @@ function App() {
     reader.onload = evt => {
       const img = new Image();
       img.onload = () => {
-        // Auto-scale if this is the first import (canvas is default size and empty)
-        if (
-          width === 32 &&
-          height === 32 &&
-          frames.length === 1 &&
-          layers.length === 1 &&
-          frames[0].layers[layers[0].id] &&
-          frames[0].layers[layers[0].id].every(row =>
-            row.every(cell => cell === null),
-          )
-        ) {
+        // Auto-scale if canvas is at default size (32x32) or user explicitly requests it (future feature).
+        // For now, if it matches default dimensions, we assume it's a fresh project and resize.
+        if (width === 32 && height === 32) {
           const newW = img.width;
           const newH = img.height;
           setWidth(newW);
           setHeight(newH);
-          // Re-initialize grid since dimensions changed
         }
 
         recordHistory();
-        const cols = Math.floor(img.width / width);
-        const rows = Math.floor(img.height / height);
+        // cols/rows removed, using effectiveCols/effectiveRows
+
+        // If we resized, width/height might not have updated in this closure yet?
+        // Actually, state updates are async.
+        // We should use the values we JUST set if we entered the block.
+        const effectiveWidth =
+          width === 32 && height === 32 ? img.width : width;
+        const effectiveHeight =
+          width === 32 && height === 32 ? img.height : height;
+
+        const effectiveCols = Math.floor(img.width / effectiveWidth);
+        const effectiveRows = Math.floor(img.height / effectiveHeight);
+
         const newFrames: Frame[] = [];
 
         const canvas = document.createElement("canvas");
-        canvas.width = width;
-        canvas.height = height;
+        canvas.width = effectiveWidth;
+        canvas.height = effectiveHeight;
         const ctx = canvas.getContext("2d", { willReadFrequently: true });
         if (!ctx) return;
 
         const importLayerId = "layer-import";
-        setLayers([
+        // If we resized, maybe we should wipe existing layers?
+        // Or just add new one.
+        // existing logic adds new layer.
+
+        setLayers(prev => [
+          ...prev,
           {
             id: importLayerId,
             name: "Imported",
@@ -822,29 +827,34 @@ function App() {
         ]);
         setActiveLayerId(importLayerId);
 
-        for (let r = 0; r < rows; r++) {
-          for (let c = 0; c < cols; c++) {
-            ctx.clearRect(0, 0, width, height);
+        for (let r = 0; r < effectiveRows; r++) {
+          for (let c = 0; c < effectiveCols; c++) {
+            ctx.clearRect(0, 0, effectiveWidth, effectiveHeight);
             ctx.drawImage(
               img,
-              c * width,
-              r * height,
-              width,
-              height,
+              c * effectiveWidth,
+              r * effectiveHeight,
+              effectiveWidth,
+              effectiveHeight,
               0,
               0,
-              width,
-              height,
+              effectiveWidth,
+              effectiveHeight,
             );
 
-            const imageData = ctx.getImageData(0, 0, width, height);
+            const imageData = ctx.getImageData(
+              0,
+              0,
+              effectiveWidth,
+              effectiveHeight,
+            );
             const data = imageData.data;
-            const grid = createEmptyGrid(width, height);
+            const grid = createEmptyGrid(effectiveWidth, effectiveHeight);
 
             let hasContent = false;
-            for (let y = 0; y < height; y++) {
-              for (let x = 0; x < width; x++) {
-                const i = (y * width + x) * 4;
+            for (let y = 0; y < effectiveHeight; y++) {
+              for (let x = 0; x < effectiveWidth; x++) {
+                const i = (y * effectiveWidth + x) * 4;
                 if (data[i + 3] > 0) {
                   const hex =
                     "#" +
@@ -862,7 +872,8 @@ function App() {
               }
             }
 
-            if (hasContent) {
+            if (hasContent || (effectiveCols === 1 && effectiveRows === 1)) {
+              // Always add if single frame, even if empty?
               newFrames.push({
                 id: Date.now().toString() + Math.random(),
                 layers: { [importLayerId]: grid },
@@ -873,7 +884,13 @@ function App() {
         }
 
         if (newFrames.length > 0) {
-          setFrames(newFrames);
+          // If we are replacing the project (resized), maybe replace frames?
+          // If we resized, we should probably RESET frames to these new ones.
+          if (width === 32 && height === 32) {
+            setFrames(newFrames);
+          } else {
+            setFrames(prev => [...prev, ...newFrames]);
+          }
           setCurrentFrameIndex(0);
         }
       };
@@ -949,15 +966,16 @@ function App() {
           invertSelection();
           break;
         case "DELETE_SELECTION":
-          // Handle delete
           if (selectionMask) {
-            // ... logic to delete selection?
-            // Not easily exposed here without duplicating logic from handlePointerDown/canvas interaction
-            // But we have updateActiveLayerPixels and extractSelectedPixels logic...
-            // For now maybe pass? Or implement simple clear.
-            // Let's omit DELETE logic for now or just trigger a "clear selection" if that's what it means?
-            // DEFAULT_HOTKEYS uses "DELETE_SELECTION".
-            // We can implement it if `selectionMask` exists, clear those pixels.
+            const currentFrame = frames[currentFrameIndex];
+            const layerGrid = currentFrame.layers[activeLayerId];
+            if (layerGrid) {
+              // Create new grid with selected pixels cleared
+              const newGrid = layerGrid.map((row, y) =>
+                row.map((cell, x) => (selectionMask[y][x] ? null : cell)),
+              );
+              updateActiveLayerPixels(activeLayerId, newGrid);
+            }
           }
           break;
         case "DESELECT":
@@ -1018,10 +1036,26 @@ function App() {
       {/* Top Header */}
       <header className="h-14 border-b border-gray-800 bg-gray-900 flex items-center px-4 justify-between z-20 shrink-0 relative">
         {/* Left: Branding & Menu */}
-        <div className="flex items-center gap-4">
+        <div className="block items-center gap-4">
           <div className="flex items-center gap-2">
-            <div className="w-8 h-8 bg-gradient-to-tr from-indigo-500 to-purple-500 rounded flex items-center justify-center font-bold text-sm shadow-lg">
-              P
+            <div className="w-8 h-8 flex items-center justify-center font-bold text-sm ">
+              <button
+                type="button"
+                onClick={() => {
+                  setSettingsTab("about");
+                  setIsSettingsOpen(true);
+                }}
+                className="w-full h-full flex items-center justify-center cursor-pointer transition-colors"
+              >
+                <img
+                  src={isElectron() ? "./assets/favicon.png" : "favicon.png"}
+                  alt="Logo"
+                  title="PixelForge"
+                  aria-label="PixelForge"
+                  role="img"
+                  className="w-full h-full object-contain border border-gray-800 shadow-lg hover:bg-indigo-600 hover:text-white transition-colors hover:border-indigo-600"
+                />
+              </button>
             </div>
             <span className="font-bold text-gray-100 hidden sm:block">
               PixelForge
