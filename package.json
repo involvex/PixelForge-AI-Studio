@@ -34,7 +34,6 @@
     "build:electron:portable": "cross-env ELECTRON=true npm run build && npm run compile:electron && electron-builder --win portable -c electron-builder.yml",
     "electron:debug": "concurrently \"cross-env NODE_ENV=development NODE_OPTIONS=--inspect\" \"npm run dev:electron\"",
     "prepare": "husky",
-    "postinstall": "husky init",
     "preversion": "npm run format:check && npm run lint:fix && npm run typecheck"
   },
   "dependencies": {
