@@ -17,6 +17,7 @@ interface EditorCanvasProps {
   width: number;
   height: number;
   zoom: number;
+  onZoomChange: (newZoom: number) => void;
   layers: Layer[]; // Metadata for layers
   // Map of layerId -> pixel grid for current frame
   layerPixels: Record<string, (string | null)[][]>;
@@ -57,6 +58,7 @@ const EditorCanvas: React.FC<EditorCanvasProps> = ({
   width,
   height,
   zoom,
+  onZoomChange,
   layers,
   layerPixels,
   activeLayerId,
@@ -87,6 +89,11 @@ const EditorCanvas: React.FC<EditorCanvasProps> = ({
     y: 0,
   });
 
+  // Hand Tool State
+  const [panOffset, setPanOffset] = useState<Coordinates>({ x: 0, y: 0 });
+  const [isPanning, setIsPanning] = useState(false);
+  const [panStart, setPanStart] = useState<Coordinates>({ x: 0, y: 0 });
+
   // Transform Tool State
   const [transformState, setTransformState] = useState<TransformState | null>(
     null,
@@ -101,12 +108,51 @@ const EditorCanvas: React.FC<EditorCanvasProps> = ({
   useEffect(() => {
     setTransformState(null);
     setFloatingBuffer(null);
+    setFloatingBuffer(null);
     setFloatingOffset({ x: 0, y: 0 });
+    // Keep panOffset!
+    setIsPanning(false);
+    setDragStart(null);
     setDragStart(null);
     setIsDrawing(false);
     setActiveHandle(null);
     setTransformStart(null);
   }, []);
+
+  // Zoom Interaction (Ctrl + Wheel)
+  useEffect(() => {
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+
+    const handleWheel = (e: WheelEvent) => {
+      if (e.ctrlKey) {
+        e.preventDefault();
+        const direction = -Math.sign(e.deltaY);
+        // Simple 10% increment or specific steps? App.tsx uses discrete integers usually?
+        // App.tsx uses: setZoom(z => Math.max(1, Math.min(64, z + delta)))
+        // Let's just pass the raw "next step" logic or let App handle it?
+        // Props says: onZoomChange(newZoom: number).
+        // Let's define steps or just increment.
+        const currentZoom = zoom;
+        let newZoom = currentZoom + direction;
+        if (currentZoom >= 16) newZoom = currentZoom + direction * 2;
+        if (currentZoom >= 32) newZoom = currentZoom + direction * 4;
+
+        // Clamp handled by App or here? Best here to send valid value.
+        newZoom = Math.max(1, Math.min(64, newZoom));
+
+        if (newZoom !== currentZoom) {
+          onZoomChange(newZoom);
+        }
+      }
+    };
+
+    canvas.addEventListener("wheel", handleWheel, { passive: false });
+
+    return () => {
+      canvas.removeEventListener("wheel", handleWheel);
+    };
+  }, [onZoomChange, zoom]);
 
   // Commit function for Transform
   const commitTransform = useCallback(() => {
@@ -168,6 +214,10 @@ const EditorCanvas: React.FC<EditorCanvasProps> = ({
 
     // Clear
     ctx.clearRect(0, 0, width * zoom, height * zoom);
+
+    // Apply Pan Offset
+    ctx.save(); // Save 1 (Pan Transform)
+    ctx.translate(panOffset.x, panOffset.y);
 
     // 1. Render all Visible Layers from bottom to top
     layers.forEach(layer => {
@@ -340,6 +390,8 @@ const EditorCanvas: React.FC<EditorCanvasProps> = ({
       ctx.stroke();
     }
 
+    ctx.restore(); // Restore 1 (Pan Transform)
+
     // 3. Draw Selection Overlay
     if (selectionMask && selectedTool !== ToolType.TRANSFORM) {
       ctx.fillStyle = "rgba(100, 150, 255, 0.2)";
@@ -405,12 +457,32 @@ const EditorCanvas: React.FC<EditorCanvasProps> = ({
     floatingBuffer,
     floatingOffset,
     transformState,
+    panOffset,
   ]);
 
   const handlePointerDown = (e: React.MouseEvent | React.TouchEvent) => {
     const canvas = canvasRef.current;
     if (!canvas) return;
-    const coords = getCoordinates(e, canvas, zoom);
+
+    // Adjust coordinates for Pan
+    const rect = canvas.getBoundingClientRect();
+
+    let clientX, clientY;
+    if ("touches" in e) {
+      clientX = e.touches[0].clientX;
+      clientY = e.touches[0].clientY;
+    } else {
+      clientX = (e as React.MouseEvent).clientX;
+      clientY = (e as React.MouseEvent).clientY;
+    }
+
+    const rawX = clientX - rect.left;
+    const rawY = clientY - rect.top;
+
+    const coords = {
+      x: Math.floor((rawX - panOffset.x) / zoom),
+      y: Math.floor((rawY - panOffset.y) / zoom),
+    };
 
     // Check for Transform Handle Hits
     if (selectedTool === ToolType.TRANSFORM && transformState) {
@@ -602,6 +674,12 @@ const EditorCanvas: React.FC<EditorCanvasProps> = ({
       return;
     }
 
+    if (selectedTool === ToolType.HAND) {
+      setIsPanning(true);
+      setPanStart({ x: clientX, y: clientY });
+      return;
+    }
+
     if (selectedTool === ToolType.MOVE) {
       if (selectionMask) {
         // Record history before move starts
@@ -724,7 +802,35 @@ const EditorCanvas: React.FC<EditorCanvasProps> = ({
       return;
     }
 
-    const coords = getCoordinates(e, canvas, zoom);
+    // Hand Tool Panning
+    if (isPanning && selectedTool === ToolType.HAND) {
+      const clientX =
+        "touches" in e ? e.touches[0].clientX : (e as React.MouseEvent).clientX;
+      const clientY =
+        "touches" in e ? e.touches[0].clientY : (e as React.MouseEvent).clientY;
+
+      const dx = clientX - panStart.x;
+      const dy = clientY - panStart.y;
+
+      setPanOffset(prev => ({ x: prev.x + dx, y: prev.y + dy }));
+      setPanStart({ x: clientX, y: clientY });
+      return;
+    }
+
+    const rect = canvas.getBoundingClientRect();
+    const rawX =
+      ("touches" in e
+        ? e.touches[0].clientX
+        : (e as React.MouseEvent).clientX) - rect.left;
+    const rawY =
+      ("touches" in e
+        ? e.touches[0].clientY
+        : (e as React.MouseEvent).clientY) - rect.top;
+
+    const coords = {
+      x: Math.floor((rawX - panOffset.x) / zoom),
+      y: Math.floor((rawY - panOffset.y) / zoom),
+    };
 
     if (
       coords &&
@@ -793,6 +899,10 @@ const EditorCanvas: React.FC<EditorCanvasProps> = ({
     if (selectedTool === ToolType.TRANSFORM) {
       setActiveHandle(null);
       setTransformStart(null);
+    }
+
+    if (selectedTool === ToolType.HAND) {
+      setIsPanning(false);
     }
 
     if (selectedTool === ToolType.LASSO) {

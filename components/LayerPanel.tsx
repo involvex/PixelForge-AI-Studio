@@ -1,4 +1,5 @@
 import {
+  ArrowDownToLine,
   Edit2,
   Eye,
   EyeOff,
@@ -19,6 +20,7 @@ interface LayerPanelProps {
   onSelectLayer: (id: string) => void;
   onUpdateLayer: (id: string, updates: Partial<Layer>) => void;
   onMoveLayer: (fromIndex: number, toIndex: number) => void;
+  onMergeLayer: (id: string) => void;
 }
 
 const LayerPanel: React.FC<LayerPanelProps> = ({
@@ -29,6 +31,7 @@ const LayerPanel: React.FC<LayerPanelProps> = ({
   onSelectLayer,
   onUpdateLayer,
   onMoveLayer,
+  onMergeLayer,
 }) => {
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editName, setEditName] = useState("");
@@ -169,6 +172,17 @@ const LayerPanel: React.FC<LayerPanelProps> = ({
                   title="Rename"
                 >
                   <Edit2 size={12} />
+                </button>
+                <button
+                  onClick={e => {
+                    e.stopPropagation();
+                    onMergeLayer(layer.id);
+                  }}
+                  className="p-1 hover:bg-gray-700 rounded text-gray-400 hover:text-white"
+                  title="Merge Down"
+                  disabled={index === reversedLayers.length - 1} // Disable if bottom layer (reversed index last = array index 0)
+                >
+                  <ArrowDownToLine size={12} />
                 </button>
                 <button
                   onClick={e => {

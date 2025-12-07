@@ -8,6 +8,7 @@ export enum ToolType {
   LASSO = "LASSO",
   MOVE = "MOVE",
   TRANSFORM = "TRANSFORM",
+  HAND = "HAND",
 }
 
 export interface Coordinates {

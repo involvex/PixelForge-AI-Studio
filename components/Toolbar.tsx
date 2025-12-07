@@ -1,6 +1,7 @@
 import {
   BoxSelect,
   Eraser,
+  Hand,
   LassoSelect,
   MousePointer2,
   Move,
@@ -61,6 +62,11 @@ const Toolbar: React.FC<ToolbarProps> = ({
       type: ToolType.TRANSFORM,
       icon: <BoxSelect size={20} />,
       label: "Transform (T)",
+    },
+    {
+      type: ToolType.HAND,
+      icon: <Hand size={20} />,
+      label: "Hand (H)",
     },
   ];
 

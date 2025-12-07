@@ -1,6 +1,20 @@
-import { Check, Globe, Pause, Play, Trash2, Upload, X } from "lucide-react";
+import {
+  Check,
+  Edit2,
+  Globe,
+  Pause,
+  Play,
+  Trash2,
+  Upload,
+  X,
+} from "lucide-react";
 import React, { useEffect, useState } from "react";
 import { PluginInstance, pluginManager } from "../systems/PluginManager";
+import {
+  DEFAULT_HOTKEYS,
+  type HotkeyMap,
+  saveHotkeys,
+} from "../utils/hotkeyUtils";
 import { applyTheme, Theme, themes } from "../utils/themeUtils";
 
 interface SettingsModalProps {
@@ -14,7 +28,16 @@ interface SettingsModalProps {
   // General props (mocked for now)
   minimizeToTray: boolean;
   setMinimizeToTray: (val: boolean) => void;
-  initialTab?: "general" | "themes" | "api" | "plugins" | "about" | "repo"; // Added initialTab
+  hotkeys: HotkeyMap;
+  setHotkeys: (hotkeys: HotkeyMap) => void;
+  initialTab?:
+    | "general"
+    | "themes"
+    | "api"
+    | "plugins"
+    | "about"
+    | "repo"
+    | "hotkeys";
 }
 
 const SettingsModal: React.FC<SettingsModalProps> = ({
@@ -26,10 +49,12 @@ const SettingsModal: React.FC<SettingsModalProps> = ({
   setCurrentThemeId,
   minimizeToTray,
   setMinimizeToTray,
+  hotkeys,
+  setHotkeys,
   initialTab = "general",
 }) => {
   const [activeTab, setActiveTab] = useState<
-    "general" | "themes" | "api" | "plugins" | "about" | "repo"
+    "general" | "themes" | "api" | "plugins" | "about" | "repo" | "hotkeys"
   >(initialTab);
   const [localApiKey, setLocalApiKey] = useState(apiKey);
   const [plugins, setPlugins] = useState<PluginInstance[]>([]);
@@ -107,7 +132,7 @@ const SettingsModal: React.FC<SettingsModalProps> = ({
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm">
-      <div className="bg-gray-800 w-[600px] h-[500px] rounded-lg shadow-2xl border border-gray-700 flex flex-col overflow-hidden animate-in zoom-in-95 duration-200">
+      <div className="bg-gray-800 w-[1000px] h-[800px] rounded-lg shadow-2xl border border-gray-700 flex flex-col overflow-hidden animate-in zoom-in-95 duration-200">
         {/* Header */}
         <div className="h-14 border-b border-gray-700 flex items-center justify-between px-6 bg-gray-900">
           <h2 className="text-lg font-bold text-white">Settings</h2>
@@ -131,6 +156,12 @@ const SettingsModal: React.FC<SettingsModalProps> = ({
               className={`text-left px-3 py-2 rounded text-sm ${activeTab === "themes" ? "bg-indigo-600 text-white" : "text-gray-400 hover:bg-gray-800 hover:text-white"}`}
             >
               Themes
+            </button>
+            <button
+              onClick={() => setActiveTab("hotkeys")}
+              className={`text-left px-3 py-2 rounded text-sm ${activeTab === "hotkeys" ? "bg-indigo-600 text-white" : "text-gray-400 hover:bg-gray-800 hover:text-white"}`}
+            >
+              Hotkeys
             </button>
             <button
               onClick={() => setActiveTab("api")}
@@ -337,6 +368,100 @@ const SettingsModal: React.FC<SettingsModalProps> = ({
                       </div>
                     ))
                   )}
+                </div>
+              </div>
+            )}
+
+            {activeTab === "hotkeys" && (
+              <div className="space-y-4">
+                <h3 className="text-sm font-bold text-gray-300 uppercase tracking-wider mb-4 border-b border-gray-700 pb-2 flex justify-between items-center">
+                  <span>Keyboard Shortcuts</span>
+                  <button
+                    onClick={() => {
+                      if (confirm("Reset all hotkeys to default?")) {
+                        setHotkeys(DEFAULT_HOTKEYS);
+                        saveHotkeys(DEFAULT_HOTKEYS);
+                      }
+                    }}
+                    className="text-xs text-red-400 hover:text-red-300 px-2 py-1 rounded hover:bg-red-900/30"
+                  >
+                    Reset Defaults
+                  </button>
+                </h3>
+
+                <div className="space-y-1">
+                  {Object.entries(hotkeys).map(([combo, action]) => (
+                    <div
+                      key={combo}
+                      className="flex items-center justify-between p-2 bg-gray-850 rounded hover:bg-gray-800 border border-transparent hover:border-gray-700 group"
+                    >
+                      <span className="text-sm text-gray-300">
+                        {action.replace(/_/g, " ")}
+                      </span>
+                      <div className="flex items-center gap-2">
+                        <span className="bg-gray-950 px-2 py-1 rounded text-xs text-gray-400 font-mono border border-gray-700 min-w-[60px] text-center">
+                          {combo}
+                        </span>
+                        <button
+                          onClick={() => {
+                            const newKey = prompt(
+                              `Enter new hotkey for ${action} (e.g. mod+shift+z, ctrl+s, p)`,
+                            );
+                            if (newKey) {
+                              const newHotkeys = { ...hotkeys };
+                              delete newHotkeys[combo]; // Remove old mapping if we want 1:1, or keep?
+                              // Ideally we swap or update.
+                              // Check if key already exists
+                              if (newHotkeys[newKey]) {
+                                if (
+                                  !confirm(
+                                    `Key ${newKey} is already assigned to ${newHotkeys[newKey]}. Overwrite?`,
+                                  )
+                                )
+                                  return;
+                              }
+                              newHotkeys[newKey.toLowerCase()] = action;
+                              setHotkeys(newHotkeys);
+                              saveHotkeys(newHotkeys);
+                            }
+                          }}
+                          className="p-1 hover:bg-indigo-600 rounded text-gray-500 hover:text-white"
+                          title="Edit Key"
+                        >
+                          <Edit2 size={12} />
+                        </button>
+                        <button
+                          onClick={() => {
+                            if (
+                              Object.keys(hotkeys).filter(
+                                k => hotkeys[k] === action,
+                              ).length <= 1
+                            ) {
+                              alert(
+                                "Cannot remove the last binding for an action.",
+                              );
+                              return;
+                            }
+                            const newHotkeys = { ...hotkeys };
+                            delete newHotkeys[combo];
+                            setHotkeys(newHotkeys);
+                            saveHotkeys(newHotkeys);
+                          }}
+                          className="p-1 hover:bg-red-900/50 rounded text-gray-500 hover:text-red-400 opacity-0 group-hover:opacity-100"
+                          title="Remove Binding"
+                        >
+                          <Trash2 size={12} />
+                        </button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+
+                <div className="mt-4 pt-4 border-t border-gray-700">
+                  <p className="text-xs text-gray-500">
+                    Modifiers: `mod` (Ctrl/Cmd), `shift`, `alt`. Combine with
+                    `+`. Example: `mod+shift+z`.
+                  </p>
                 </div>
               </div>
             )}
