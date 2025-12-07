@@ -5,6 +5,7 @@ export enum ToolType {
   PICKER = "PICKER",
   SELECT = "SELECT",
   MAGIC_WAND = "MAGIC_WAND",
+  LASSO = "LASSO",
   MOVE = "MOVE",
   TRANSFORM = "TRANSFORM",
 }
@@ -79,3 +80,10 @@ export interface AIChatMessage {
   type?: "text" | "error" | "success";
   groundingUrls?: Array<{ title: string; uri: string }>;
 }
+
+export interface AppSettings {
+  geminiApiKey: string;
+  minimizeToTray: boolean;
+}
+
+export default AppSettings;

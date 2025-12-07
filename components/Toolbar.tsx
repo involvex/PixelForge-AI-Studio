@@ -1,15 +1,16 @@
-import React from "react";
 import {
-  Pencil,
+  BoxSelect,
   Eraser,
-  PaintBucket,
-  Pipette,
+  LassoSelect,
   MousePointer2,
   Move,
-  Wand,
+  PaintBucket,
+  Pencil,
+  Pipette,
   RefreshCw,
-  BoxSelect,
+  Wand,
 } from "lucide-react";
+import React from "react";
 import { ToolType } from "../types";
 
 interface ToolbarProps {
@@ -49,6 +50,11 @@ const Toolbar: React.FC<ToolbarProps> = ({
       type: ToolType.SELECT,
       icon: <MousePointer2 size={20} />,
       label: "Select (S)",
+    },
+    {
+      type: ToolType.LASSO,
+      icon: <LassoSelect size={20} />,
+      label: "Lasso (L)",
     },
     { type: ToolType.MOVE, icon: <Move size={20} />, label: "Move (M)" },
     {

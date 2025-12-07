@@ -1,6 +1,6 @@
+import { Palette as PaletteIcon, Plus, Trash2 } from "lucide-react";
 import type React from "react";
 import { useState } from "react";
-import { Plus, Trash2, Palette as PaletteIcon } from "lucide-react";
 import type { Palette as PaletteType } from "../types";
 
 interface PalettePanelProps {

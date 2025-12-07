@@ -8,6 +8,7 @@ declare module "gifenc" {
         palette?: unknown;
         delay?: number;
         transparent?: boolean;
+        repeat?: number;
       },
     ): void;
     finish(): void;

@@ -27,6 +27,7 @@
     "services/**/*",
     "utils/**/*",
     "types/**/*",
+    "types/electron.d.ts",
     "scripts/**/*",
     "App.tsx",
     "index.tsx",

@@ -2,14 +2,15 @@ import type React from "react";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { ToolType, type Coordinates, type Layer } from "../types";
 import {
-  getCoordinates,
-  floodFill,
-  magicWandSelect,
   extractSelectedPixels,
+  floodFill,
+  getCoordinates,
+  magicWandSelect,
   mergePixels,
-  shiftMask,
+  rasterizePolygon,
   rasterizeTransform,
   rasterizeTransformMask,
+  shiftMask,
 } from "../utils/drawingUtils";
 
 interface EditorCanvasProps {
@@ -28,11 +29,13 @@ interface EditorCanvasProps {
   primaryColor: string;
   secondaryColor: string;
   gridVisible: boolean;
+  gridColor?: string;
   setPrimaryColor: (color: string) => void;
   selectionMask: boolean[][] | null;
   setSelectionMask: (mask: boolean[][] | null) => void;
   onDrawStart: () => void;
   historyVersion: number;
+  gridSize?: number;
 }
 
 interface TransformState {
@@ -65,11 +68,14 @@ const EditorCanvas: React.FC<EditorCanvasProps> = ({
   selectionMask,
   setSelectionMask,
   onDrawStart,
+  gridSize = 1,
+  gridColor,
   // historyVersion,
 }) => {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const [isDrawing, setIsDrawing] = useState(false);
   const [previewPixel, setPreviewPixel] = useState<Coordinates | null>(null);
+  const [lassoPoints, setLassoPoints] = useState<Coordinates[]>([]);
 
   // Move Tool State
   const [dragStart, setDragStart] = useState<Coordinates | null>(null);
@@ -318,14 +324,16 @@ const EditorCanvas: React.FC<EditorCanvasProps> = ({
 
     // 2. Draw Grid Lines
     if (gridVisible && zoom > 4) {
-      ctx.strokeStyle = "rgba(255, 255, 255, 0.05)";
+      ctx.strokeStyle = gridColor || "rgba(255, 255, 255, 0.05)";
       ctx.lineWidth = 1;
       ctx.beginPath();
-      for (let x = 0; x <= width; x++) {
+      const gSize = gridSize || 1;
+
+      for (let x = 0; x <= width; x += gSize) {
         ctx.moveTo(x * zoom, 0);
         ctx.lineTo(x * zoom, height * zoom);
       }
-      for (let y = 0; y <= height; y++) {
+      for (let y = 0; y <= height; y += gSize) {
         ctx.moveTo(0, y * zoom);
         ctx.lineTo(width * zoom, y * zoom);
       }
@@ -368,6 +376,20 @@ const EditorCanvas: React.FC<EditorCanvasProps> = ({
         selectedTool === ToolType.ERASER ? "red" : "rgba(255,255,255,0.8)";
       ctx.lineWidth = 2;
       ctx.strokeRect(previewPixel.x * zoom, previewPixel.y * zoom, zoom, zoom);
+    }
+
+    // 5. Draw Lasso Path
+    if (selectedTool === ToolType.LASSO && lassoPoints.length > 0) {
+      ctx.strokeStyle = "#00ffcc";
+      ctx.lineWidth = 1;
+      ctx.setLineDash([4, 4]);
+      ctx.beginPath();
+      ctx.moveTo(lassoPoints[0].x * zoom, lassoPoints[0].y * zoom);
+      for (let i = 1; i < lassoPoints.length; i++) {
+        ctx.lineTo(lassoPoints[i].x * zoom, lassoPoints[i].y * zoom);
+      }
+      ctx.stroke();
+      ctx.setLineDash([]);
     }
   }, [
     layers,
@@ -599,6 +621,12 @@ const EditorCanvas: React.FC<EditorCanvasProps> = ({
       return;
     }
 
+    if (selectedTool === ToolType.LASSO) {
+      setLassoPoints([coords]);
+      setIsDrawing(true);
+      return;
+    }
+
     // Standard Drawing Tools
     // Don't record history for PICKER or SELECT since they don't modify pixels directly/destructively in a way we want to revert stroke-by-stroke usually?
     // Wait, SELECT modifies selection mask. We do want undo for selection changes.
@@ -724,6 +752,15 @@ const EditorCanvas: React.FC<EditorCanvasProps> = ({
       }
       handleDraw(e);
     }
+
+    if (isDrawing && selectedTool === ToolType.LASSO && coords) {
+      // Debounce? No, just add point if different
+      setLassoPoints(prev => {
+        const last = prev[prev.length - 1];
+        if (last && last.x === coords.x && last.y === coords.y) return prev;
+        return [...prev, coords];
+      });
+    }
   };
 
   const handlePointerUp = () => {
@@ -756,6 +793,16 @@ const EditorCanvas: React.FC<EditorCanvasProps> = ({
     if (selectedTool === ToolType.TRANSFORM) {
       setActiveHandle(null);
       setTransformStart(null);
+    }
+
+    if (selectedTool === ToolType.LASSO) {
+      if (lassoPoints.length > 2) {
+        const mask = rasterizePolygon(lassoPoints, width, height);
+        setSelectionMask(mask);
+      }
+      setLassoPoints([]);
+      setIsDrawing(false);
+      return;
     }
 
     setIsDrawing(false);

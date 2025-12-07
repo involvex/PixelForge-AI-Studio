@@ -1,14 +1,14 @@
-import React, { useState } from "react";
 import {
+  Edit2,
   Eye,
   EyeOff,
-  Lock,
-  Unlock,
-  Trash2,
-  Plus,
   GripVertical,
-  Edit2,
+  Lock,
+  Plus,
+  Trash2,
+  Unlock,
 } from "lucide-react";
+import React, { useState } from "react";
 import { Layer } from "../types";
 
 interface LayerPanelProps {
@@ -184,28 +184,26 @@ const LayerPanel: React.FC<LayerPanelProps> = ({
               </div>
             </div>
 
-            {/* Opacity Slider */}
-            {activeLayerId === layer.id && (
-              <div className="flex items-center gap-2 mt-2 px-1">
-                <span className="text-[10px] text-gray-500 w-6">
-                  {Math.round(layer.opacity * 100)}%
-                </span>
-                <input
-                  type="range"
-                  min="0"
-                  max="1"
-                  step="0.01"
-                  value={layer.opacity}
-                  onChange={e =>
-                    onUpdateLayer(layer.id, {
-                      opacity: parseFloat(e.target.value),
-                    })
-                  }
-                  onClick={e => e.stopPropagation()}
-                  className="flex-1 h-1 bg-gray-700 rounded-lg appearance-none cursor-pointer"
-                />
-              </div>
-            )}
+            {/* Opacity Slider - Always Visible */}
+            <div className="flex items-center gap-2 mt-1 px-1 opacity-50 group-hover:opacity-100 transition-opacity">
+              <span className="text-[10px] text-gray-500 w-6">
+                {Math.round(layer.opacity * 100)}%
+              </span>
+              <input
+                type="range"
+                min="0"
+                max="1"
+                step="0.01"
+                value={layer.opacity}
+                onChange={e =>
+                  onUpdateLayer(layer.id, {
+                    opacity: parseFloat(e.target.value),
+                  })
+                }
+                onClick={e => e.stopPropagation()}
+                className="flex-1 h-1 bg-gray-700 rounded-lg appearance-none cursor-pointer hover:bg-indigo-900"
+              />
+            </div>
           </div>
         ))}
       </div>

@@ -1,5 +1,4 @@
-import { contextBridge, ipcRenderer } from "electron";
-
+import electron from "electron";
 interface AppSettings {
   geminiApiKey: string;
   minimizeToTray: boolean;
@@ -7,6 +6,7 @@ interface AppSettings {
 
 // Expose protected methods that allow the renderer process to use
 // the ipcRenderer without exposing the entire object
+const { contextBridge, ipcRenderer } = electron;
 contextBridge.exposeInMainWorld("electronAPI", {
   quit: () => {
     console.log("Quit requested from renderer");
@@ -27,8 +27,8 @@ contextBridge.exposeInMainWorld("electronAPI", {
   },
 
   // Listen for settings events
-  onOpenSettings: (callback: () => void) => {
-    ipcRenderer.on("open-settings", callback);
+  onOpenSettings: (callback: (tab?: string) => void) => {
+    ipcRenderer.on("open-settings", (_event, tab) => callback(tab));
   },
 
   // Remove listeners

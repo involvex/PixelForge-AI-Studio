@@ -10,6 +10,17 @@
       content="PixelForge AI Studio - Pixel Art Editor with AI Assistance"
     />
 
+    <!-- Theme Variables (Defaults) -->
+    <style id="theme-vars">
+      :root {
+        --color-gray-750: #2d3748;
+        --color-gray-850: #1a202c;
+        --color-gray-950: #0d1117;
+        --color-bg-primary: #0d1117;
+        --color-text-primary: #ffffff;
+      }
+    </style>
+
     <!-- Tailwind CSS CDN with custom configuration -->
     <script src="https://cdn.tailwindcss.com"></script>
     <script>
@@ -22,9 +33,9 @@
             },
             colors: {
               gray: {
-                750: "#2d3748",
-                850: "#1a202c",
-                950: "#0d1117",
+                750: "var(--color-gray-750)",
+                850: "var(--color-gray-850)",
+                950: "var(--color-gray-950)",
               },
             },
           },

@@ -1,33 +1,38 @@
 import {
+  ArrowLeftRight,
+  Copy,
   Download,
-  Upload,
-  Clapperboard,
-  Layers,
-  Sparkles,
+  FlipHorizontal,
   FolderOpen,
-  Save,
-  Archive,
-  FileImage,
-  MousePointer2,
+  Layers,
   Maximize2,
   Minimize2,
-  ArrowLeftRight,
-  X,
-  Undo,
-  Redo,
+  MousePointer2,
   Palette as PaletteIcon,
+  Redo,
+  Save,
+  Settings,
+  Sliders,
+  Sparkles,
+  Undo,
+  Upload,
+  X,
+  ZoomIn,
+  ZoomOut,
 } from "lucide-react";
 import type React from "react";
 import { useCallback, useEffect, useState } from "react";
-import * as _gifenc from "gifenc";
-import JSZip from "jszip";
+import AdjustmentsPanel from "./components/AdjustmentsPanel";
 import AIPanel from "./components/AIPanel";
 import AnimationPanel from "./components/AnimationPanel";
-import EditorCanvas from "./components/EditorCanvas";
-import LayerPanel from "./components/LayerPanel";
 import AppLoader from "./components/AppLoader";
+import EditorCanvas from "./components/EditorCanvas";
+import ExportModal from "./components/ExportModal";
+import LayerPanel from "./components/LayerPanel";
 import NetworkStatus from "./components/NetworkStatus";
 import PalettePanel from "./components/PalettePanel";
+import SettingsModal from "./components/SettingsModal";
+import SettingsPanel from "./components/SettingsPanel";
 import Toolbar from "./components/Toolbar";
 import { type Frame, type Layer, type Palette, ToolType } from "./types";
 import {
@@ -37,12 +42,14 @@ import {
   invertMask,
   replaceColor,
 } from "./utils/drawingUtils";
-
-// Handle potential ESM/CJS interop issues with CDN
-const gifenc =
-  (_gifenc as unknown as typeof _gifenc & { default?: typeof _gifenc })
-    .default ?? _gifenc;
-const { GIFEncoder, quantize, applyPalette } = gifenc;
+import {
+  createGif,
+  createSpriteSheet,
+  downloadBlob,
+  framesToDataURL,
+  renderFrameToCanvas,
+} from "./utils/exportUtils.ts";
+import { defaultTheme } from "./utils/themeUtils";
 
 const DEFAULT_SIZE = 32;
 
@@ -86,7 +93,6 @@ function App() {
   // --- State ---
   const [width, setWidth] = useState(DEFAULT_SIZE);
   const [height, setHeight] = useState(DEFAULT_SIZE);
-  const [zoom] = useState(15);
 
   // Initialize with one layer
   const initialLayerId = "layer-1";
@@ -116,7 +122,8 @@ function App() {
 
   const [fps, setFps] = useState(12);
   const [isPlaying, setIsPlaying] = useState(false);
-  const [gridVisible] = useState(true);
+  const [gridVisible, setGridVisible] = useState(true);
+  const [gridSize, setGridSize] = useState(1);
 
   // Selection Mask & Saved Selections
   const [selectionMask, setSelectionMask] = useState<boolean[][] | null>(null);
@@ -140,6 +147,76 @@ function App() {
   const [activeRightTab, setActiveRightTab] = useState<
     "layers" | "ai" | "palettes"
   >("layers");
+
+  // Settings State
+  const [isSettingsOpen, setIsSettingsOpen] = useState(false);
+  const [showExport, setShowExport] = useState(false);
+  const [showAdjustments, setShowAdjustments] = useState(false);
+  const [zoom, setZoom] = useState(15);
+  const [gridColor, setGridColor] = useState("rgba(255, 255, 255, 0.05)");
+
+  const [apiKey, setApiKey] = useState(
+    () => localStorage.getItem("pf_apiKey") || "",
+  );
+  const [currentThemeId, setCurrentThemeId] = useState(
+    () => localStorage.getItem("pf_themeId") || defaultTheme.id,
+  );
+  const [minimizeToTray, setMinimizeToTray] = useState(
+    () => localStorage.getItem("pf_minimizeToTray") === "true",
+  );
+  const [settingsTab, setSettingsTab] = useState<
+    "general" | "themes" | "api" | "plugins" | "about" | "repo"
+  >("general");
+
+  // Layout State
+  const [rightSidebarWidth, setRightSidebarWidth] = useState(320);
+  const [isResizingSidebar, setIsResizingSidebar] = useState(false);
+
+  // Electron Listeners
+  useEffect(() => {
+    // Check if running in Electron and API is available
+    if (window.electronAPI) {
+      window.electronAPI.onOpenSettings((tab?: string) => {
+        if (tab) setSettingsTab(tab as never);
+        setIsSettingsOpen(true);
+      });
+    }
+  }, []);
+
+  // Sidebar Resizing
+  const startResizing = useCallback(() => setIsResizingSidebar(true), []);
+  const stopResizing = useCallback(() => setIsResizingSidebar(false), []);
+  const resize = useCallback(
+    (e: MouseEvent) => {
+      if (isResizingSidebar) {
+        const newWidth = window.innerWidth - e.clientX;
+        setRightSidebarWidth(Math.max(200, Math.min(600, newWidth)));
+      }
+    },
+    [isResizingSidebar],
+  );
+
+  useEffect(() => {
+    window.addEventListener("mousemove", resize);
+    window.addEventListener("mouseup", stopResizing);
+    return () => {
+      window.removeEventListener("mousemove", resize);
+      window.removeEventListener("mouseup", stopResizing);
+    };
+  }, [resize, stopResizing]);
+
+  // --- Persistence Effects ---
+  useEffect(() => {
+    localStorage.setItem("pf_apiKey", apiKey);
+  }, [apiKey]);
+
+  useEffect(() => {
+    localStorage.setItem("pf_themeId", currentThemeId);
+  }, [currentThemeId]);
+
+  useEffect(() => {
+    localStorage.setItem("pf_minimizeToTray", String(minimizeToTray));
+  }, [minimizeToTray]);
 
   // --- Animation Loop ---
   useEffect(() => {
@@ -526,39 +603,16 @@ function App() {
     }
   };
 
-  // --- Compositing ---
-  const renderFrameToCanvas = (frame: Frame, ctx: CanvasRenderingContext2D) => {
-    ctx.clearRect(0, 0, width, height);
-    layers.forEach(layer => {
-      if (!layer.visible) return;
-      const pixels = frame.layers[layer.id];
-      if (!pixels) return;
-
-      ctx.globalAlpha = layer.opacity;
-      pixels.forEach((row, y) => {
-        row.forEach((color, x) => {
-          if (color) {
-            ctx.fillStyle = color;
-            ctx.fillRect(x, y, 1, 1);
-          }
-        });
-      });
-    });
-    ctx.globalAlpha = 1.0;
-  };
-
+  // Export logic moved to utils/exportUtils.ts
   const getCompositeDataURL = () => {
-    const canvas = document.createElement("canvas");
-    canvas.width = width;
-    canvas.height = height;
-    const ctx = canvas.getContext("2d");
-    if (!ctx) return "";
-
-    renderFrameToCanvas(frames[currentFrameIndex], ctx);
+    const canvas = renderFrameToCanvas(
+      frames[currentFrameIndex],
+      layers,
+      width,
+      height,
+    );
     return canvas.toDataURL("image/png");
   };
-
-  // --- AI & Exports ---
 
   const handleApplyAIImage = async (base64: string) => {
     const img = new Image();
@@ -599,115 +653,6 @@ function App() {
       }
       updateActiveLayerPixels(activeLayerId, newGrid);
     };
-  };
-
-  const exportSpriteSheet = () => {
-    const canvas = document.createElement("canvas");
-    canvas.width = width * frames.length;
-    canvas.height = height;
-    const ctx = canvas.getContext("2d");
-    if (!ctx) return;
-
-    frames.forEach((frame, idx) => {
-      const fCanvas = document.createElement("canvas");
-      fCanvas.width = width;
-      fCanvas.height = height;
-      const fCtx = fCanvas.getContext("2d");
-      if (fCtx) {
-        renderFrameToCanvas(frame, fCtx);
-        ctx.drawImage(fCanvas, idx * width, 0);
-      }
-    });
-
-    const link = document.createElement("a");
-    link.download = "spritesheet.png";
-    link.href = canvas.toDataURL();
-    link.click();
-  };
-
-  const exportFramePNG = () => {
-    const dataUrl = getCompositeDataURL();
-    const link = document.createElement("a");
-    link.download = `frame_${currentFrameIndex + 1}.png`;
-    link.href = dataUrl;
-    link.click();
-  };
-
-  const exportGIF = async () => {
-    if (frames.length === 0) return;
-    const gif = new GIFEncoder();
-
-    for (const frame of frames) {
-      const canvas = document.createElement("canvas");
-      canvas.width = width;
-      canvas.height = height;
-      const ctx = canvas.getContext("2d", { willReadFrequently: true });
-      if (!ctx) continue;
-
-      renderFrameToCanvas(frame, ctx);
-
-      const imageData = ctx.getImageData(0, 0, width, height);
-      const { data } = imageData;
-
-      const palette = quantize(new Uint8Array(data.buffer), 256, {
-        format: "rgba4444",
-      });
-      const index = applyPalette(
-        new Uint8Array(data.buffer),
-        palette,
-        "rgba4444",
-      );
-      const delay = Math.round(1000 / fps / 10);
-      gif.writeFrame(index, width, height, {
-        palette,
-        delay,
-        transparent: true,
-      });
-    }
-
-    gif.finish();
-    const buffer = gif.bytes();
-    const blob = new Blob([buffer as unknown as BlobPart], {
-      type: "image/gif",
-    });
-    const url = URL.createObjectURL(blob);
-    const link = document.createElement("a");
-    link.href = url;
-    link.download = "animation.gif";
-    link.click();
-  };
-
-  const exportFramesZip = async () => {
-    const zip = new JSZip();
-
-    const promises = frames.map(async (frame, index) => {
-      const canvas = document.createElement("canvas");
-      canvas.width = width;
-      canvas.height = height;
-      const ctx = canvas.getContext("2d");
-      if (!ctx) return;
-
-      renderFrameToCanvas(frame, ctx);
-
-      return new Promise<void>(resolve => {
-        canvas.toBlob(blob => {
-          if (blob) {
-            const fileName = `frame_${(index + 1).toString().padStart(3, "0")}.png`;
-            zip.file(fileName, blob);
-          }
-          resolve();
-        }, "image/png");
-      });
-    });
-
-    await Promise.all(promises);
-
-    const content = await zip.generateAsync({ type: "blob" });
-    const url = URL.createObjectURL(content);
-    const link = document.createElement("a");
-    link.href = url;
-    link.download = "frames_archive.zip";
-    link.click();
   };
 
   const saveProject = () => {
@@ -936,6 +881,72 @@ function App() {
               className="w-10 bg-gray-900 border border-gray-600 rounded text-xs px-1 text-center text-white"
             />
           </div>
+
+          <div className="h-6 w-px bg-gray-700 mx-2"></div>
+
+          {/* Zoom Controls */}
+          <div className="flex items-center gap-1 bg-gray-800 p-1 rounded border border-gray-700">
+            <button
+              onClick={() => setZoom(Math.max(1, zoom - 1))}
+              className="p-1 text-gray-400 hover:text-white"
+            >
+              <ZoomOut size={14} />
+            </button>
+            <input
+              type="range"
+              min="1"
+              max="64"
+              value={zoom}
+              onChange={e => setZoom(Number(e.target.value))}
+              className="w-20 h-1 bg-gray-600 rounded-lg appearance-none cursor-pointer"
+            />
+            <span className="text-xs text-gray-300 w-8 text-center">
+              {zoom}x
+            </span>
+            <button
+              onClick={() => setZoom(Math.min(64, zoom + 1))}
+              className="p-1 text-gray-400 hover:text-white"
+            >
+              <ZoomIn size={14} />
+            </button>
+          </div>
+
+          <div className="h-6 w-px bg-gray-700 mx-2"></div>
+
+          {/* Transform & Adjustments */}
+          <div className="flex items-center gap-1">
+            <button
+              onClick={() => setShowAdjustments(!showAdjustments)}
+              className={`p-1.5 rounded ${showAdjustments ? "bg-indigo-600 text-white" : "text-gray-400 hover:text-white hover:bg-gray-800"}`}
+              title="Adjustments"
+            >
+              <Sliders size={16} />
+            </button>
+            <button
+              className="p-1.5 text-gray-400 hover:text-white hover:bg-gray-800 rounded"
+              title="Flip Horizontal"
+            >
+              <FlipHorizontal size={16} />
+            </button>
+            <button
+              className="p-1.5 text-gray-400 hover:text-white hover:bg-gray-800 rounded"
+              title="Clone to All Frames"
+            >
+              <Copy size={16} />
+            </button>
+          </div>
+
+          <div className="h-6 w-px bg-gray-700 mx-2"></div>
+
+          {/* Grid Settings */}
+          <SettingsPanel
+            gridVisible={gridVisible}
+            setGridVisible={setGridVisible}
+            gridSize={gridSize}
+            setGridSize={setGridSize}
+            gridColor={gridColor}
+            setGridColor={setGridColor}
+          />
         </div>
 
         <div className="flex items-center gap-2">
@@ -1002,39 +1013,23 @@ function App() {
           <div className="h-4 w-px bg-gray-700 mx-1"></div>
 
           {/* Export Group */}
-          <div className="flex items-center gap-1">
-            <button
-              type="button"
-              onClick={exportFramePNG}
-              className="p-1.5 text-gray-400 hover:text-white hover:bg-gray-800 rounded"
-              title="Save Current Frame (PNG)"
-            >
-              <FileImage size={16} />
-            </button>
-            <button
-              type="button"
-              onClick={exportGIF}
-              className="p-1.5 text-gray-400 hover:text-white hover:bg-gray-800 rounded"
-              title="Save GIF"
-            >
-              <Clapperboard size={16} />
-            </button>
-            <button
-              type="button"
-              onClick={exportFramesZip}
-              className="p-1.5 text-gray-400 hover:text-white hover:bg-gray-800 rounded"
-              title="Export All Frames (ZIP)"
-            >
-              <Archive size={16} />
-            </button>
-            <button
-              type="button"
-              onClick={exportSpriteSheet}
-              className="flex items-center gap-1 text-xs bg-indigo-600 hover:bg-indigo-500 px-3 py-1.5 rounded text-white font-medium transition-colors ml-1"
-            >
-              <Download size={14} /> Sheet
-            </button>
-          </div>
+          <button
+            type="button"
+            onClick={() => setShowExport(true)}
+            className="flex items-center gap-1 text-xs bg-indigo-600 hover:bg-indigo-500 px-3 py-1.5 rounded text-white font-medium transition-colors ml-1 shadow-lg shadow-indigo-900/40"
+          >
+            <Download size={14} /> Export
+          </button>
+
+          <div className="h-4 w-px bg-gray-700 mx-2"></div>
+
+          <button
+            onClick={() => setIsSettingsOpen(true)}
+            className="p-1.5 text-gray-400 hover:text-white hover:bg-gray-800 rounded transition-colors"
+            title="Settings"
+          >
+            <Settings size={18} />
+          </button>
         </div>
       </header>
 
@@ -1129,6 +1124,8 @@ function App() {
                 primaryColor={primaryColor}
                 secondaryColor={secondaryColor}
                 gridVisible={gridVisible}
+                gridSize={gridSize}
+                gridColor={gridColor}
                 setPrimaryColor={setPrimaryColor}
                 selectionMask={selectionMask}
                 setSelectionMask={setSelectionMask}
@@ -1154,8 +1151,19 @@ function App() {
           />
         </div>
 
+        {/* Resizer Handle */}
+        <div
+          className={`w-1 hover:bg-indigo-500 cursor-col-resize transition-colors flex items-center justify-center group z-10 ${isResizingSidebar ? "bg-indigo-600" : "bg-gray-800"}`}
+          onMouseDown={startResizing}
+        >
+          <div className="h-8 w-0.5 bg-gray-600 group-hover:bg-indigo-300 rounded-full"></div>
+        </div>
+
         {/* Right Sidebar (Layers, AI, Palettes) */}
-        <div className="w-80 flex flex-col h-full bg-gray-900 border-l border-gray-750">
+        <div
+          className="flex flex-col h-full bg-gray-900 border-l border-gray-750 shrink-0"
+          style={{ width: rightSidebarWidth }}
+        >
           {/* Tabs */}
           <div className="flex border-b border-gray-750 shrink-0">
             <button
@@ -1217,6 +1225,62 @@ function App() {
         </div>
       </div>
       <NetworkStatus />
+
+      <SettingsModal
+        isOpen={isSettingsOpen}
+        onClose={() => setIsSettingsOpen(false)}
+        apiKey={apiKey}
+        setApiKey={setApiKey}
+        currentThemeId={currentThemeId}
+        setCurrentThemeId={setCurrentThemeId}
+        minimizeToTray={minimizeToTray}
+        setMinimizeToTray={setMinimizeToTray}
+        initialTab={settingsTab}
+      />
+      <ExportModal
+        isOpen={showExport}
+        onClose={() => setShowExport(false)}
+        onExportGIF={(scale, fps, loop) => {
+          createGif(frames, layers, width, height, fps, scale, loop ? 0 : 1);
+          setShowExport(false);
+        }}
+        onExportSpritesheet={(cols, padding, format) => {
+          createSpriteSheet(
+            frames,
+            layers,
+            width,
+            height,
+            cols,
+            padding,
+            format,
+          );
+          setShowExport(false);
+        }}
+        onExportFrame={() => {
+          framesToDataURL(
+            [frames[currentFrameIndex]],
+            layers,
+            width,
+            height,
+          ).then((urls: string[]) => {
+            if (urls[0]) {
+              downloadBlob(urls[0], `frame-${currentFrameIndex}.png`);
+            }
+          });
+          setShowExport(false);
+        }}
+      />
+
+      {showAdjustments && (
+        <AdjustmentsPanel
+          onClose={() => setShowAdjustments(false)}
+          onApply={(b, c, g) => {
+            // Placeholder for logic
+            console.log("Adjustments:", b, c, g);
+            setShowAdjustments(false);
+          }}
+        />
+      )}
     </div>
   );
 }

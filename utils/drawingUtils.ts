@@ -383,3 +383,61 @@ export const contractMask = (
   }
   return newMask;
 };
+
+// --- Lasso / Polygon Logic ---
+
+export const rasterizePolygon = (
+  points: Coordinates[],
+  width: number,
+  height: number,
+): boolean[][] => {
+  const mask = createEmptyMask(width, height);
+  if (points.length < 3) return mask;
+
+  let minX = width;
+  let minY = height;
+  let maxX = 0;
+  let maxY = 0;
+
+  points.forEach(p => {
+    minX = Math.min(minX, p.x);
+    minY = Math.min(minY, p.y);
+    maxX = Math.max(maxX, p.x);
+    maxY = Math.max(maxY, p.y);
+  });
+
+  // Clamp to grid
+  minX = Math.max(0, minX);
+  minY = Math.max(0, minY);
+  maxX = Math.min(width - 1, maxX);
+  maxY = Math.min(height - 1, maxY);
+
+  for (let y = minY; y <= maxY; y++) {
+    for (let x = minX; x <= maxX; x++) {
+      if (pointInPolygon(x, y, points)) {
+        mask[y][x] = true;
+      }
+    }
+  }
+
+  return mask;
+};
+
+const pointInPolygon = (
+  x: number,
+  y: number,
+  points: Coordinates[],
+): boolean => {
+  let inside = false;
+  for (let i = 0, j = points.length - 1; i < points.length; j = i++) {
+    const xi = points[i].x,
+      yi = points[i].y;
+    const xj = points[j].x,
+      yj = points[j].y;
+
+    const intersect =
+      yi > y !== yj > y && x < ((xj - xi) * (y - yi)) / (yj - yi) + xi;
+    if (intersect) inside = !inside;
+  }
+  return inside;
+};

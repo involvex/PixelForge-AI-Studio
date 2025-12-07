@@ -1,11 +1,12 @@
-import { app, BrowserWindow, Tray, Menu, nativeImage, ipcMain } from "electron";
-import path from "path";
+import electron from "electron";
+import electronDebug from "electron-debug";
+import isDev from "electron-is-dev";
 import fs from "fs";
-import debug from "electron-debug";
-debug();
+import path from "path";
+electronDebug();
 
-let mainWindow: BrowserWindow | null = null;
-let tray: Tray | null = null;
+let mainWindow: electron.BrowserWindow | null = null;
+let tray: electron.Tray | null = null;
 let isQuitting = false;
 
 // Settings management
@@ -20,7 +21,7 @@ const defaultSettings: AppSettings = {
 };
 
 function getSettingsPath(): string {
-  const userDataPath = app.getPath("userData");
+  const userDataPath = electron.app.getPath("userData");
   return path.join(userDataPath, "settings.json");
 }
 
@@ -52,24 +53,24 @@ function createTray() {
   try {
     // Try to create a fallback icon if the icon file doesn't exist
     const iconPath = path.join(
-      app.getAppPath(),
+      process.cwd(),
       "dist-electron/.icon-ico/icon.ico",
     );
 
     // Create a simple fallback icon using nativeImage
-    const fallbackIcon = nativeImage.createFromDataURL(
+    const fallbackIcon = electron.nativeImage.createFromDataURL(
       `data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNkYPhfDwAChwGA60e6kgAAAABJRU5ErkJggg==`,
     );
 
     try {
       // Try to use the actual icon file
-      tray = new Tray(iconPath);
+      tray = new electron.Tray(iconPath);
     } catch (iconError) {
       console.warn("Could not load tray icon, using fallback:", iconError);
-      tray = new Tray(fallbackIcon);
+      tray = new electron.Tray(fallbackIcon);
     }
 
-    const contextMenu = Menu.buildFromTemplate([
+    const contextMenu = electron.Menu.buildFromTemplate([
       {
         label: "Show Application",
         click: () => {
@@ -86,21 +87,17 @@ function createTray() {
             mainWindow.show();
             mainWindow.focus();
             // Send event to open settings
-            mainWindow.webContents.send("open-settings");
+            mainWindow.webContents.send("open-settings", "general");
           }
         },
       },
       {
-        label: appSettings.minimizeToTray
-          ? "Minimize to Tray: ON"
-          : "Minimize to Tray: OFF",
+        label: "About",
         click: () => {
-          appSettings.minimizeToTray = !appSettings.minimizeToTray;
-          saveSettings(appSettings);
-          // Update tray menu
-          if (tray) {
-            tray.destroy();
-            createTray();
+          if (mainWindow) {
+            mainWindow.show();
+            mainWindow.focus();
+            mainWindow.webContents.send("open-settings", "about");
           }
         },
       },
@@ -109,7 +106,7 @@ function createTray() {
         label: "Quit",
         click: () => {
           isQuitting = true;
-          app.quit();
+          electron.app.quit();
         },
       },
     ]);
@@ -138,11 +135,11 @@ function createWindow() {
   try {
     console.log("Creating BrowserWindow...");
     const iconPath = path.join(
-      app.getAppPath(),
+      electron.app.getAppPath(),
       "dist-electron/.icon-ico/icon.ico",
     );
 
-    const win = new BrowserWindow({
+    const win = new electron.BrowserWindow({
       width: 1280,
       height: 720,
       icon: iconPath,
@@ -150,7 +147,7 @@ function createWindow() {
         nodeIntegration: false,
         contextIsolation: true,
         webSecurity: true,
-        preload: path.join(app.getAppPath(), "dist/electron/preload.js"),
+        preload: path.join(electron.app.getAppPath(), "preload.js"),
       },
     });
 
@@ -161,7 +158,7 @@ function createWindow() {
     createTray();
 
     // Handle window close event
-    win.on("close", event => {
+    win.on("close", (event: Electron.Event) => {
       if (!isQuitting && appSettings.minimizeToTray) {
         event.preventDefault();
         win.hide();
@@ -179,14 +176,14 @@ function createWindow() {
       console.log("Cache cleared!");
     });
 
-    if (process.env.NODE_ENV === "development") {
+    if (isDev) {
       console.log("Loading development URL...");
       win.loadURL("http://localhost:3005");
       win.webContents.openDevTools();
     } else {
       console.log("Loading production file...");
       // Use app.getAppPath() instead of process.cwd() for packaged builds
-      const appPath = app.getAppPath();
+      const appPath = electron.app.getAppPath();
       const indexPath = process.env.ELECTRON_START_URL
         ? path.join(process.cwd(), "dist/index.html")
         : path.join(appPath, "dist/index.html");
@@ -197,23 +194,23 @@ function createWindow() {
   }
 }
 
-app.whenReady().then(() => {
+electron.app.whenReady().then(() => {
   console.log("Electron app ready, creating window...");
   createWindow();
 
   // Handle quit requests from renderer process
-  ipcMain.on("quit-app", () => {
+  electron.ipcMain.on("quit-app", () => {
     console.log("Quit request received from renderer");
     isQuitting = true;
-    app.quit();
+    electron.app.quit();
   });
 
   // Handle settings requests from renderer process
-  ipcMain.handle("get-settings", () => {
+  electron.ipcMain.handle("get-settings", () => {
     return appSettings;
   });
 
-  ipcMain.handle(
+  electron.ipcMain.handle(
     "save-settings",
     (event, newSettings: Partial<AppSettings>) => {
       appSettings = { ...appSettings, ...newSettings };
@@ -223,14 +220,17 @@ app.whenReady().then(() => {
   );
 
   // Handle API key update from renderer
-  ipcMain.on("update-api-key", (event, apiKey: string) => {
-    appSettings.geminiApiKey = apiKey;
-    saveSettings(appSettings);
-    console.log("API Key updated successfully");
-  });
+  electron.ipcMain.on(
+    "update-api-key",
+    (event: Electron.Event, apiKey: string) => {
+      appSettings.geminiApiKey = apiKey;
+      saveSettings(appSettings);
+      console.log("API Key updated successfully");
+    },
+  );
 
-  app.on("activate", () => {
-    if (BrowserWindow.getAllWindows().length === 0) {
+  electron.app.on("activate", () => {
+    if (electron.BrowserWindow.getAllWindows().length === 0) {
       console.log("Creating window on activate");
       createWindow();
     } else if (mainWindow?.isMinimized()) {
@@ -241,16 +241,16 @@ app.whenReady().then(() => {
   });
 });
 
-app.on("window-all-closed", () => {
+electron.app.on("window-all-closed", () => {
   // On macOS, keep app running even when all windows are closed
   // On other platforms, quit if no windows are open and not minimizing to tray
   if (process.platform !== "darwin") {
     if (!tray || !appSettings.minimizeToTray) {
-      app.quit();
+      electron.app.quit();
     }
   }
 });
 
-app.on("before-quit", () => {
+electron.app.on("before-quit", () => {
   isQuitting = true;
 });
