@@ -43,7 +43,7 @@ jobs:
           GITHUB_REPOSITORY: ${{ github.repository }}
           NODE_ENV: production
         run: |
-          npm install
+          npm ci
           npm run build:gh-pages
       - name: Upload artifact
         uses: actions/upload-pages-artifact@v3
