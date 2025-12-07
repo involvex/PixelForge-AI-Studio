@@ -138,7 +138,12 @@ function createWindow() {
       electron.app.getAppPath(),
       "dist-electron/.icon-ico/icon.ico",
     );
-
+    let preloadPath: string;
+    if (isDev) {
+      preloadPath = path.join(electron.app.getAppPath(), "preload.js");
+    } else {
+      preloadPath = "dist-electron/preload.js";
+    }
     const win = new electron.BrowserWindow({
       width: 1280,
       height: 720,
@@ -147,7 +152,7 @@ function createWindow() {
         nodeIntegration: false,
         contextIsolation: true,
         webSecurity: true,
-        preload: path.join(electron.app.getAppPath(), "preload.js"),
+        preload: preloadPath,
       },
     });
 
