@@ -4,6 +4,11 @@ import isDev from "electron-is-dev";
 import fs from "fs";
 import path from "path";
 import { fileURLToPath } from "url";
+import { updateElectronApp } from "update-electron-app";
+
+updateElectronApp({
+  notifyUser: true,
+});
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);

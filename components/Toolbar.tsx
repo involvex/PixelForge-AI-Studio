@@ -71,7 +71,7 @@ const Toolbar: React.FC<ToolbarProps> = ({
   ];
 
   return (
-    <div className="w-16 bg-gray-850 border-r border-gray-750 flex flex-col items-center py-4 gap-4 z-10 overflow-y-auto scrollbar-none">
+    <div className="flex flex-col items-center w-full gap-4">
       {tools.map(tool => (
         <button
           key={tool.type}

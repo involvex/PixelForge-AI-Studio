@@ -28,6 +28,8 @@ import AnimationPanel from "./components/AnimationPanel";
 import AppLoader from "./components/AppLoader";
 import EditorCanvas from "./components/EditorCanvas";
 import ExportModal from "./components/ExportModal";
+import Header from "./components/layout/Header";
+import Sidebar from "./components/layout/Sidebar";
 import LayerPanel from "./components/LayerPanel";
 import MenuBar from "./components/MenuBar";
 import NetworkStatus from "./components/NetworkStatus";
@@ -1033,248 +1035,295 @@ function App() {
         }
       }}
     >
-      {/* Top Header */}
-      <header className="h-14 border-b border-gray-800 bg-gray-900 flex items-center px-4 justify-between z-20 shrink-0 relative">
-        {/* Left: Branding & Menu */}
-        <div className="block items-center gap-4">
-          <div className="flex items-center gap-2">
-            <div className="w-8 h-8 flex items-center justify-center font-bold text-sm ">
-              <button
-                type="button"
-                onClick={() => {
-                  setSettingsTab("about");
-                  setIsSettingsOpen(true);
-                }}
-                className="w-full h-full flex items-center justify-center cursor-pointer transition-colors"
-              >
-                <img
-                  src={"favicon.png"}
-                  alt="Logo"
-                  title="PixelForge"
-                  aria-label="PixelForge"
-                  role="img"
-                  className="w-full h-full object-contain border border-gray-800 shadow-lg hover:bg-indigo-600 hover:text-white transition-colors hover:border-indigo-600"
-                />
-              </button>
-            </div>
-            <span className="font-bold text-gray-100 hidden sm:block">
-              PixelForge
-            </span>
-          </div>
-
-          <MenuBar
-            onUndo={performUndo}
-            onRedo={performRedo}
-            onCut={() => {}}
-            onCopy={() => {}}
-            onPaste={() => {}}
-            onClear={() => {
-              const currentFrame = frames[currentFrameIndex];
-              if (currentFrame && currentFrame.layers[activeLayerId]) {
-                const newGrid = createEmptyGrid(width, height);
-                updateActiveLayerPixels(activeLayerId, newGrid);
-              }
-            }}
-            onOpenSettings={() => setSettingsTab("general")}
-            setTool={setSelectedTool}
-            setZoom={onZoomChange}
-          />
-        </div>
-
-        {/* Center: Tools & Settings */}
-        <div className="flex items-center gap-3">
-          <button
-            type="button"
-            onClick={performUndo}
-            disabled={past.length === 0}
-            className={`p-1.5 rounded ${past.length === 0 ? "text-gray-600" : "text-gray-400 hover:text-white hover:bg-gray-800"}`}
-            title="Undo (Ctrl+Z)"
-          >
-            <Undo size={16} />
-          </button>
-          <button
-            type="button"
-            onClick={performRedo}
-            disabled={future.length === 0}
-            className={`p-1.5 rounded ${future.length === 0 ? "text-gray-600" : "text-gray-400 hover:text-white hover:bg-gray-800"}`}
-            title="Redo (Ctrl+Y)"
-          >
-            <Redo size={16} />
-          </button>
-
-          <div className="h-6 w-px bg-gray-700 mx-2"></div>
-
-          {/* Grid Generator / Resize */}
-          <div className="flex items-center gap-2 bg-gray-800 p-1 rounded border border-gray-700">
-            <span className="text-xs text-gray-400 px-1">Size</span>
-            <input
-              title="Width"
-              type="number"
-              value={width}
-              onChange={e => handleResize(Number(e.target.value), height)}
-              className="w-10 bg-gray-900 border border-gray-600 rounded text-xs px-1 text-center text-white"
-            />
-            <span className="text-xs text-gray-500">x</span>
-            <input
-              title="Height"
-              type="number"
-              value={height}
-              onChange={e => handleResize(width, Number(e.target.value))}
-              className="w-10 bg-gray-900 border border-gray-600 rounded text-xs px-1 text-center text-white"
-            />
-          </div>
-
-          <div className="h-6 w-px bg-gray-700 mx-2"></div>
-
-          {/* Zoom Controls */}
-          <div className="flex items-center gap-1 bg-gray-800 p-1 rounded border border-gray-700">
-            <button
-              onClick={() => setZoom(Math.max(1, zoom - 1))}
-              className="p-1 text-gray-400 hover:text-white"
-            >
-              <ZoomOut size={14} />
-            </button>
-            <input
-              type="range"
-              min="1"
-              max="64"
-              value={zoom}
-              onChange={e => setZoom(Number(e.target.value))}
-              className="w-20 h-1 bg-gray-600 rounded-lg appearance-none cursor-pointer"
-            />
-            <span className="text-xs text-gray-300 w-8 text-center">
-              {zoom}x
-            </span>
-            <button
-              onClick={() => setZoom(Math.min(64, zoom + 1))}
-              className="p-1 text-gray-400 hover:text-white"
-            >
-              <ZoomIn size={14} />
-            </button>
-          </div>
-
-          <div className="h-6 w-px bg-gray-700 mx-2"></div>
-
-          {/* Transform & Adjustments */}
-          <div className="flex items-center gap-1">
-            <button
-              onClick={() => setShowAdjustments(!showAdjustments)}
-              className={`p-1.5 rounded ${showAdjustments ? "bg-indigo-600 text-white" : "text-gray-400 hover:text-white hover:bg-gray-800"}`}
-              title="Adjustments"
-            >
-              <Sliders size={16} />
-            </button>
-            <button
-              className="p-1.5 text-gray-400 hover:text-white hover:bg-gray-800 rounded"
-              title="Flip Horizontal"
-            >
-              <FlipHorizontal size={16} />
-            </button>
-            <button
-              className="p-1.5 text-gray-400 hover:text-white hover:bg-gray-800 rounded"
-              title="Clone to All Frames"
-            >
-              <Copy size={16} />
-            </button>
-          </div>
-
-          <div className="h-6 w-px bg-gray-700 mx-2"></div>
-
-          {/* Grid Settings */}
-          <SettingsPanel
-            gridVisible={gridVisible}
-            setGridVisible={setGridVisible}
-            gridSize={gridSize}
-            setGridSize={setGridSize}
-            gridColor={gridColor}
-            setGridColor={setGridColor}
-          />
-        </div>
-
-        {/* Right: File Ops */}
-        <div className="flex items-center gap-2">
-          {/* Load Selection Dropdown */}
-          {Object.keys(savedSelections).length > 0 && (
-            <div className="relative group">
-              <button
-                type="button"
-                className="flex items-center gap-1 text-xs text-gray-400 hover:text-white px-2 py-1.5 rounded hover:bg-gray-700 border border-gray-700"
-              >
-                <MousePointer2 size={14} /> Load Selection
-              </button>
-              <div className="absolute right-0 top-full mt-1 w-40 bg-gray-800 border border-gray-700 rounded shadow-lg hidden group-hover:block z-50">
-                {Object.keys(savedSelections).map(name => (
-                  <button
-                    type="button"
-                    key={name}
-                    onClick={() => loadSelection(name)}
-                    className="block w-full text-left px-3 py-2 text-xs text-gray-300 hover:bg-gray-700 hover:text-white"
-                  >
-                    {name}
-                  </button>
-                ))}
+      <Header
+        left={
+          <>
+            <div className="flex items-center gap-2">
+              <div className="w-8 h-8 flex items-center justify-center font-bold text-sm ">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setSettingsTab("about");
+                    setIsSettingsOpen(true);
+                  }}
+                  className="w-full h-full flex items-center justify-center cursor-pointer transition-colors"
+                >
+                  <img
+                    src={"favicon.png"}
+                    alt="Logo"
+                    title="PixelForge"
+                    aria-label="PixelForge"
+                    role="img"
+                    className="w-full h-full object-contain border border-gray-800 shadow-lg hover:bg-indigo-600 hover:text-white transition-colors hover:border-indigo-600"
+                  />
+                </button>
               </div>
+              <span className="font-bold text-gray-100 hidden sm:block">
+                PixelForge
+              </span>
             </div>
-          )}
 
-          {/* Project Files Group */}
-          <div className="flex items-center bg-gray-800 rounded p-1 gap-1 border border-gray-700">
-            <label
-              className="p-1.5 text-gray-400 hover:text-white hover:bg-gray-700 rounded cursor-pointer"
-              title="Load Project"
-            >
-              <FolderOpen size={16} />
-              <input
-                title="Load Project"
-                type="file"
-                accept=".json"
-                onChange={loadProject}
-                className="hidden"
-              />
-            </label>
+            <MenuBar
+              onUndo={performUndo}
+              onRedo={performRedo}
+              onCut={() => {}}
+              onCopy={() => {}}
+              onPaste={() => {}}
+              onClear={() => {
+                const currentFrame = frames[currentFrameIndex];
+                if (currentFrame && currentFrame.layers[activeLayerId]) {
+                  const newGrid = createEmptyGrid(width, height);
+                  updateActiveLayerPixels(activeLayerId, newGrid);
+                }
+              }}
+              onOpenSettings={() => {
+                setSettingsTab("general");
+                setIsSettingsOpen(true);
+              }}
+              setTool={setSelectedTool}
+              setZoom={onZoomChange}
+            />
+          </>
+        }
+        center={
+          <>
             <button
               type="button"
-              onClick={saveProject}
-              className="p-1.5 text-gray-400 hover:text-white hover:bg-gray-700 rounded"
-              title="Save Project"
+              onClick={performUndo}
+              disabled={past.length === 0}
+              className={`p-1.5 rounded ${past.length === 0 ? "text-gray-600" : "text-gray-400 hover:text-white hover:bg-gray-800"}`}
+              title="Undo (Ctrl+Z)"
             >
-              <Save size={16} />
+              <Undo size={16} />
             </button>
-          </div>
+            <button
+              type="button"
+              onClick={performRedo}
+              disabled={future.length === 0}
+              className={`p-1.5 rounded ${future.length === 0 ? "text-gray-600" : "text-gray-400 hover:text-white hover:bg-gray-800"}`}
+              title="Redo (Ctrl+Y)"
+            >
+              <Redo size={16} />
+            </button>
+            <div className="h-4 w-px bg-gray-700 mx-2" />
+            <div className="h-4 w-px bg-gray-700 mx-2" />
 
-          {/* Import Group */}
-          <label className="flex items-center gap-1 text-xs text-gray-400 hover:text-white cursor-pointer bg-gray-800 px-2 py-1.5 rounded hover:bg-gray-700 transition-colors border border-gray-700">
-            <Upload size={14} /> Import Sheet
-            <input
-              type="file"
-              accept="image/*"
-              onChange={handleImportSpritesheet}
-              className="hidden"
+            {/* Grid Settings */}
+            <SettingsPanel
+              gridVisible={gridVisible}
+              setGridVisible={setGridVisible}
+              gridSize={gridSize}
+              setGridSize={setGridSize}
+              gridColor={gridColor}
+              setGridColor={setGridColor}
             />
-          </label>
+            <div className="h-4 w-px bg-gray-700 mx-2" />
 
-          <div className="h-4 w-px bg-gray-700 mx-1"></div>
+            {/* Resize */}
+            <div className="flex items-center gap-2 bg-gray-800 p-0.5 rounded border border-gray-700">
+              <input
+                title="Width"
+                type="number"
+                value={width}
+                onChange={e => handleResize(Number(e.target.value), height)}
+                className="w-10 bg-gray-900 border border-gray-600 rounded text-xs px-1 text-center text-white"
+              />
+              <span className="text-xs text-gray-500">x</span>
+              <input
+                title="Height"
+                type="number"
+                value={height}
+                onChange={e => handleResize(width, Number(e.target.value))}
+                className="w-10 bg-gray-900 border border-gray-600 rounded text-xs px-1 text-center text-white"
+              />
+            </div>
 
-          {/* Export Group */}
+            <div className="h-4 w-px bg-gray-700 mx-2" />
+
+            {/* Zoom */}
+            <div className="flex items-center gap-1 bg-gray-800 p-0.5 rounded border border-gray-700">
+              <button
+                onClick={() => setZoom(Math.max(1, zoom - 1))}
+                className="p-1 text-gray-400 hover:text-white"
+              >
+                <ZoomOut size={14} />
+              </button>
+              <span className="text-xs text-gray-300 w-6 text-center">
+                {zoom}x
+              </span>
+              <button
+                onClick={() => setZoom(Math.min(64, zoom + 1))}
+                className="p-1 text-gray-400 hover:text-white"
+              >
+                <ZoomIn size={14} />
+              </button>
+            </div>
+          </>
+        }
+        right={
+          <>
+            <div className="flex bg-gray-800 rounded p-0.5 border border-gray-700">
+              <button
+                className={`px-3 py-1 text-xs rounded ${activeRightTab === "layers" ? "bg-indigo-600 text-white shadow-sm" : "text-gray-400 hover:text-white"}`}
+                onClick={() => setActiveRightTab("layers")}
+              >
+                Layers
+              </button>
+              <button
+                className={`px-3 py-1 text-xs rounded ${activeRightTab === "palettes" ? "bg-indigo-600 text-white shadow-sm" : "text-gray-400 hover:text-white"}`}
+                onClick={() => setActiveRightTab("palettes")}
+              >
+                Palettes
+              </button>
+              <button
+                className={`px-3 py-1 text-xs rounded flex items-center gap-1.5 ${activeRightTab === "ai" ? "bg-indigo-600 text-white shadow-sm" : "text-gray-400 hover:text-white"}`}
+                onClick={() => setActiveRightTab("ai")}
+              >
+                <Sparkles size={10} />
+                <span>AI</span>
+              </button>
+            </div>
+
+            {/* Load Selection Dropdown */}
+            {Object.keys(savedSelections).length > 0 && (
+              <div className="relative group mx-2">
+                <button
+                  type="button"
+                  className="flex items-center gap-1 text-xs text-gray-400 hover:text-white px-2 py-1.5 rounded hover:bg-gray-700 border border-gray-700"
+                >
+                  <MousePointer2 size={14} />
+                  <span className="hidden sm:inline">Load Select</span>
+                </button>
+                <div className="absolute right-0 top-full mt-1 w-40 bg-gray-800 border border-gray-700 rounded shadow-lg hidden group-hover:block z-50">
+                  {Object.keys(savedSelections).map(name => (
+                    <button
+                      type="button"
+                      key={name}
+                      onClick={() => loadSelection(name)}
+                      className="block w-full text-left px-3 py-2 text-xs text-gray-300 hover:bg-gray-700 hover:text-white"
+                    >
+                      {name}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            <div className="h-4 w-px bg-gray-700 mx-2" />
+
+            {/* Project/File Ops */}
+            <div className="flex bg-gray-800 rounded p-0.5 border border-gray-700 items-center gap-0.5">
+              <label
+                className="p-1.5 text-gray-400 hover:text-white hover:bg-gray-700 rounded cursor-pointer"
+                title="Load Project"
+              >
+                <FolderOpen size={14} />
+                <input
+                  title="Load Project"
+                  type="file"
+                  accept=".json"
+                  onChange={loadProject}
+                  className="hidden"
+                />
+              </label>
+              <button
+                type="button"
+                onClick={saveProject}
+                className="p-1.5 text-gray-400 hover:text-white hover:bg-gray-700 rounded"
+                title="Save Project"
+              >
+                <Save size={14} />
+              </button>
+              <label
+                className="p-1.5 text-gray-400 hover:text-white hover:bg-gray-700 rounded cursor-pointer"
+                title="Import Sheet"
+              >
+                <Upload size={14} />
+                <input
+                  type="file"
+                  accept="image/*"
+                  onChange={handleImportSpritesheet}
+                  className="hidden"
+                />
+              </label>
+            </div>
+
+            <div className="h-4 w-px bg-gray-700 mx-2" />
+
+            <button
+              type="button"
+              onClick={() => setShowExport(true)}
+              className="px-3 py-1.5 bg-green-600 hover:bg-green-500 text-white text-xs font-bold rounded flex items-center gap-2 shadow-lg shadow-green-900/20"
+            >
+              <Download size={14} />
+              <span>Export</span>
+            </button>
+            <button
+              onClick={() => setIsSettingsOpen(true)}
+              className="p-1.5 text-gray-400 hover:text-white hover:bg-gray-800 rounded transition-colors ml-2"
+              title="Settings"
+            >
+              <Settings size={18} />
+            </button>
+          </>
+        }
+      />
+
+      {/* Selection Control Bar */}
+      {selectionMask && (
+        <div className="bg-indigo-900/30 border-b border-indigo-500/30 h-10 flex items-center justify-center gap-4 px-4 z-10 animate-in slide-in-from-top duration-200">
+          <span className="text-xs text-indigo-300 font-bold uppercase tracking-wider">
+            Active Selection
+          </span>
+
+          <div className="h-4 w-px bg-indigo-500/30"></div>
+
           <button
             type="button"
-            onClick={() => setShowExport(true)}
-            className="flex items-center gap-1 text-xs bg-indigo-600 hover:bg-indigo-500 px-3 py-1.5 rounded text-white font-medium transition-colors ml-1 shadow-lg shadow-indigo-900/40"
+            onClick={invertSelection}
+            className="flex items-center gap-1 text-xs text-indigo-200 hover:text-white hover:bg-indigo-500/30 px-2 py-1 rounded"
+            title="Invert Selection"
           >
-            <Download size={14} /> Export
+            <ArrowLeftRight size={12} /> Invert
+          </button>
+          <button
+            type="button"
+            onClick={expandSelection}
+            className="flex items-center gap-1 text-xs text-indigo-200 hover:text-white hover:bg-indigo-500/30 px-2 py-1 rounded"
+            title="Expand (Feather)"
+          >
+            <Maximize2 size={12} /> Expand
+          </button>
+          <button
+            type="button"
+            onClick={contractSelection}
+            className="flex items-center gap-1 text-xs text-indigo-200 hover:text-white hover:bg-indigo-500/30 px-2 py-1 rounded"
+            title="Contract (Shrink)"
+          >
+            <Minimize2 size={12} /> Contract
           </button>
 
-          <div className="h-4 w-px bg-gray-700 mx-2"></div>
+          <div className="h-4 w-px bg-indigo-500/30"></div>
 
           <button
-            onClick={() => setIsSettingsOpen(true)}
-            className="p-1.5 text-gray-400 hover:text-white hover:bg-gray-800 rounded transition-colors"
-            title="Settings"
+            type="button"
+            onClick={saveSelection}
+            className="flex items-center gap-1 text-xs text-indigo-200 hover:text-white hover:bg-indigo-500/30 px-2 py-1 rounded"
+            title="Save Selection"
           >
-            <Settings size={18} />
+            <Save size={12} /> Save
+          </button>
+
+          <button
+            type="button"
+            onClick={() => setSelectionMask(null)}
+            className="flex items-center gap-1 text-xs text-red-300 hover:text-red-100 hover:bg-red-500/20 px-2 py-1 rounded ml-auto"
+            title="Clear Selection"
+          >
+            <X size={12} /> Clear
           </button>
         </div>
-      </header>
+      )}
 
       {/* Selection Control Bar */}
       {selectionMask && (
@@ -1335,18 +1384,41 @@ function App() {
       {/* Main Workspace */}
       <div className="flex-1 flex overflow-hidden">
         {/* Tools */}
-        <Toolbar
-          selectedTool={selectedTool}
-          setTool={t => {
-            setSelectedTool(t);
-            if (t !== ToolType.MAGIC_WAND) setSelectionMask(null);
-          }}
-          primaryColor={primaryColor}
-          setPrimaryColor={setPrimaryColor}
-          secondaryColor={secondaryColor}
-          setSecondaryColor={setSecondaryColor}
-          onReplaceColor={handleReplaceColor}
-        />
+        {/* Left Toolbar */}
+        <Sidebar className="w-16 shrink-0">
+          <Toolbar
+            selectedTool={selectedTool}
+            setTool={t => {
+              setSelectedTool(t);
+              if (t !== ToolType.MAGIC_WAND) setSelectionMask(null);
+            }}
+            primaryColor={primaryColor}
+            setPrimaryColor={setPrimaryColor}
+            secondaryColor={secondaryColor}
+            setSecondaryColor={setSecondaryColor}
+            onReplaceColor={handleReplaceColor}
+          />
+          <div className="w-10 h-px bg-gray-700 my-2" />
+          <button
+            onClick={() => setShowAdjustments(!showAdjustments)}
+            className={`p-1.5 rounded ${showAdjustments ? "bg-indigo-600 text-white" : "text-gray-400 hover:text-white hover:bg-gray-800"}`}
+            title="Adjustments"
+          >
+            <Sliders size={20} />
+          </button>
+          <button
+            className="p-1.5 text-gray-400 hover:text-white hover:bg-gray-800 rounded"
+            title="Flip Horizontal"
+          >
+            <FlipHorizontal size={20} />
+          </button>
+          <button
+            className="p-1.5 text-gray-400 hover:text-white hover:bg-gray-800 rounded"
+            title="Clone to All Frames"
+          >
+            <Copy size={20} />
+          </button>
+        </Sidebar>
 
         {/* Canvas Area */}
         <div className="flex-1 relative bg-gray-800 overflow-hidden flex flex-col">
