@@ -1,6 +1,6 @@
+import { Save, X } from "lucide-react";
 import type React from "react";
 import { useState } from "react";
-import { X, Save } from "lucide-react";
 
 interface CreateTemplateModalProps {
   isOpen: boolean;

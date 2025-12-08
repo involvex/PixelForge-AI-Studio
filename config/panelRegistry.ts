@@ -9,8 +9,10 @@ import type { PanelConfig } from "../systems/layoutManager";
 /**
  * Central registry of all available panels in the application
  */
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
+/* eslint-disable @typescript-eslint/no-explicit-any */
+// biome-ignore lint/suspicious/noExplicitAny: Registry must hold heterogeneous components
 export const PANEL_REGISTRY: PanelConfig<any>[] = [
+  /* eslint-enable @typescript-eslint/no-explicit-any */
   {
     id: "layers",
     title: "Layers",
@@ -76,8 +78,10 @@ export const PANEL_REGISTRY: PanelConfig<any>[] = [
 /**
  * Get a panel configuration by ID
  */
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
+/* eslint-disable @typescript-eslint/no-explicit-any */
+// biome-ignore lint/suspicious/noExplicitAny: Return type varies dynamically
 export function getPanelConfig(panelId: string): PanelConfig<any> | undefined {
+  /* eslint-enable @typescript-eslint/no-explicit-any */
   return PANEL_REGISTRY.find(p => p.id === panelId);
 }
 

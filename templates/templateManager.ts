@@ -1,4 +1,4 @@
-import { type Frame, type Layer } from "../types";
+import type { Frame, Layer } from "../types";
 import { createEmptyGrid } from "../utils/drawingUtils";
 
 export interface ProjectTemplate {

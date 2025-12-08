@@ -6,8 +6,9 @@ interface SettingsPanelProps {
   setGridVisible: (visible: boolean) => void;
   gridSize: number;
   setGridSize: (size: number) => void;
-  gridColor?: string;
-  setGridColor?: (color: string) => void;
+  gridColor: string;
+  setGridColor: (color: string) => void;
+  idPrefix?: string;
 }
 
 const SettingsPanel: React.FC<SettingsPanelProps> = ({
@@ -17,6 +18,7 @@ const SettingsPanel: React.FC<SettingsPanelProps> = ({
   setGridSize,
   gridColor,
   setGridColor,
+  idPrefix = "",
 }) => {
   return (
     <div className="flex items-center gap-4 bg-gray-800 p-2 rounded-lg border border-gray-700 shadow-sm">
@@ -49,7 +51,7 @@ const SettingsPanel: React.FC<SettingsPanelProps> = ({
         </button>
 
         <input
-          id="gridSizeInput"
+          id={`${idPrefix}gridSizeInput`}
           type="number"
           min={1}
           max={64}
@@ -75,15 +77,18 @@ const SettingsPanel: React.FC<SettingsPanelProps> = ({
       {setGridColor && (
         <>
           <div className="h-4 w-px bg-gray-700" />
-          <div className="flex items-center gap-2" title="Grid Color">
+          <label
+            htmlFor={`${idPrefix}grid-color-input`}
+            className="flex items-center gap-2 cursor-pointer"
+          >
             <input
-              id="grid-color-input"
+              id={`${idPrefix}grid-color-input`}
               type="color"
-              value={gridColor?.startsWith("#") ? gridColor : "#ffffff"}
+              value={gridColor.startsWith("#") ? gridColor : "#ffffff"}
               onChange={e => setGridColor(e.target.value)}
               className="w-5 h-5 bg-transparent cursor-pointer rounded border-none p-0 overflow-hidden"
             />
-          </div>
+          </label>
         </>
       )}
     </div>

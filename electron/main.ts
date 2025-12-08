@@ -1,13 +1,13 @@
 // import "ts-node/register";
+import debug from "debug";
 import electron from "electron";
 import electronDebug from "electron-debug";
 import isDev from "electron-is-dev";
+import logger from "electron-log";
 import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { updateElectronApp, UpdateSourceType } from "update-electron-app";
-import logger from "electron-log";
-import debug from "debug";
 
 if (!isDev) {
   updateElectronApp({

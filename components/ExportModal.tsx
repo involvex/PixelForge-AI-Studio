@@ -187,12 +187,9 @@ const ExportModal: React.FC<ExportModalProps> = ({
               </div>
 
               <div>
-                <label
-                  htmlFor="output-format"
-                  className="block text-xs text-gray-400 mb-2"
-                >
+                <span className="block text-xs text-gray-400 mb-2">
                   Output Format
-                </label>
+                </span>
                 <div className="flex gap-2">
                   <button
                     type="button"

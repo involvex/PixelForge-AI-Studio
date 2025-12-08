@@ -5,8 +5,8 @@ import type {
   PanelConfig,
   PanelProps,
 } from "../systems/layoutManager";
-import DockablePanel from "./DockablePanel";
 import { isPanelVisible } from "../systems/layoutManager";
+import DockablePanel from "./DockablePanel";
 
 interface PanelContainerProps {
   layout: LayoutState;

@@ -14,6 +14,7 @@ interface AnimationPanelProps {
   togglePlay: () => void;
   fps: number;
   setFps: (fps: number) => void;
+  idPrefix?: string;
 }
 
 const AnimationPanel: React.FC<AnimationPanelProps> = ({
@@ -28,6 +29,7 @@ const AnimationPanel: React.FC<AnimationPanelProps> = ({
   togglePlay,
   fps,
   setFps,
+  idPrefix = "",
 }) => {
   return (
     <div className="h-48 bg-gray-900 border-t border-gray-750 flex flex-col">
@@ -50,11 +52,14 @@ const AnimationPanel: React.FC<AnimationPanelProps> = ({
         </button>
 
         <div className="flex items-center gap-2">
-          <label htmlFor="fps-input" className="text-xs text-gray-400">
+          <label
+            htmlFor={`${idPrefix}fps-input`}
+            className="text-xs text-gray-400"
+          >
             FPS:
           </label>
           <input
-            id="fps-input"
+            id={`${idPrefix}fps-input`}
             type="number"
             title="Number"
             min="1"

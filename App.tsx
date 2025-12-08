@@ -16,34 +16,39 @@ import {
 } from "lucide-react";
 import type React from "react";
 import { useCallback, useEffect, useRef, useState } from "react";
-import AdjustmentsPanel from "./components/AdjustmentsPanel";
+
 import AnimationPanel from "./components/AnimationPanel";
 import AppLoader from "./components/AppLoader";
+import ContextMenu from "./components/ContextMenu";
+import CreateTemplateModal from "./components/CreateTemplateModal";
 import EditorCanvas from "./components/EditorCanvas";
 import ExportModal from "./components/ExportModal";
 import Header from "./components/layout/Header";
 import Sidebar from "./components/layout/Sidebar";
 import MenuBar from "./components/MenuBar";
-import StatusBar from "./components/StatusBar";
-import ContextMenu from "./components/ContextMenu";
 import NetworkStatus from "./components/NetworkStatus";
+import PanelContainer from "./components/PanelContainer";
 import SettingsModal from "./components/SettingsModal";
 import SettingsPanel from "./components/SettingsPanel";
+import StatusBar from "./components/StatusBar";
 import TemplateEditor from "./components/TemplateEditor";
+import Toolbar from "./components/Toolbar";
 import TransformationModal from "./components/TransformationModal";
-import PanelContainer from "./components/PanelContainer";
 import { PANEL_REGISTRY } from "./config/panelRegistry";
 import {
   createDefaultLayout,
   isPanelVisible,
+  type LayoutState,
   loadPanelLayout,
   savePanelLayout,
   togglePanel,
-  type LayoutState,
 } from "./systems/layoutManager";
-import { type TransformOptions, transformLayer } from "./systems/transform";
-import { applyTheme, defaultTheme, themes } from "./utils/themeUtils";
-import Toolbar from "./components/Toolbar";
+import { transformLayer, type TransformOptions } from "./systems/transform";
+import {
+  createProjectFromTemplate,
+  createTemplate,
+  type ProjectTemplate,
+} from "./templates/templateManager";
 import {
   type Frame,
   type Layer,
@@ -60,12 +65,6 @@ import {
   replaceColor,
 } from "./utils/drawingUtils";
 import {
-  createProjectFromTemplate,
-  createTemplate,
-  type ProjectTemplate,
-} from "./templates/templateManager";
-import CreateTemplateModal from "./components/CreateTemplateModal";
-import {
   createGif,
   createSpriteSheet,
   downloadBlob,
@@ -76,6 +75,7 @@ import {
   getHotkeys,
   type HotkeyMap,
 } from "./utils/hotkeyUtils";
+import { applyTheme, defaultTheme, themes } from "./utils/themeUtils";
 
 // import isElectron from "is-electron";
 
@@ -199,7 +199,6 @@ function App() {
   const [historyVersion, setHistoryVersion] = useState(0);
 
   // Settings State
-  const [showAdjustments, setShowAdjustments] = useState(false);
   const [zoom, setZoom] = useState(15);
   const [gridColor, setGridColor] = useState("rgba(255, 255, 255, 0.05)");
 
@@ -1214,6 +1213,7 @@ function App() {
               setGridSize={setGridSize}
               gridColor={gridColor}
               setGridColor={setGridColor}
+              idPrefix="header-"
             />
             <div className="h-4 w-px bg-gray-700 mx-2" />
 
@@ -1401,8 +1401,8 @@ function App() {
           <div className="w-10 h-px bg-gray-700 my-2" />
           <button
             type="button"
-            onClick={() => setShowAdjustments(!showAdjustments)}
-            className={`p-1.5 rounded ${showAdjustments ? "bg-indigo-600 text-white" : "text-gray-400 hover:text-white hover:bg-gray-800"}`}
+            onClick={() => handleTogglePanel("adjustments")}
+            className={`p-1.5 rounded ${isPanelVisible(panelLayout, "adjustments") ? "bg-indigo-600 text-white" : "text-gray-400 hover:text-white hover:bg-gray-800"}`}
             title="Adjustments"
           >
             <Sliders size={20} />
@@ -1533,6 +1533,7 @@ function App() {
             togglePlay={() => setIsPlaying(!isPlaying)}
             fps={fps}
             setFps={setFps}
+            idPrefix="main-"
           />
           <StatusBar
             cursorX={cursorPos.x}
@@ -1589,15 +1590,16 @@ function App() {
                           togglePlay: () => setIsPlaying(!isPlaying),
                           fps,
                           setFps,
+                          idPrefix: "panel-",
                         }
                       : panel.id === "adjustments"
                         ? {
                             onApply: (b: number, c: number, g: number) => {
                               console.log("Adjustments applied:", b, c, g);
                               // TODO: Implement actual image adjustment logic here
-                              setShowAdjustments(false);
+                              handleTogglePanel("adjustments");
                             },
-                            onClose: () => setShowAdjustments(false),
+                            onClose: () => handleTogglePanel("adjustments"),
                           }
                         : panel.id === "settings"
                           ? {
@@ -1607,6 +1609,7 @@ function App() {
                               setGridSize,
                               gridColor,
                               setGridColor,
+                              idPrefix: "panel-",
                             }
                           : {},
           }))}
@@ -1679,17 +1682,6 @@ function App() {
         onClose={() => setShowCreateTemplateModal(false)}
         onSave={handleSaveTemplate}
       />
-
-      {showAdjustments && (
-        <AdjustmentsPanel
-          onClose={() => setShowAdjustments(false)}
-          onApply={(b, c, g) => {
-            // Placeholder for logic
-            console.log("Adjustments:", b, c, g);
-            setShowAdjustments(false);
-          }}
-        />
-      )}
     </div>
   );
 }

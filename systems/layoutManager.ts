@@ -70,8 +70,10 @@ export type PanelProps =
   | Record<string, unknown>;
 
 // Generic panel configuration – allow any props for the component
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
+/* eslint-disable @typescript-eslint/no-explicit-any */
+// biome-ignore lint/suspicious/noExplicitAny: Component prop flexibility required
 export interface PanelConfig<P = any> {
+  /* eslint-enable @typescript-eslint/no-explicit-any */
   id: string;
   title: string;
   component: React.ComponentType<P>;
@@ -135,9 +137,13 @@ export function loadPanelLayout(): LayoutState | null {
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 export function getPanelConfig(panelId: string): PanelConfig<any> | undefined {
   // Lazy import to avoid circular dependencies
+  // Lazy import to avoid circular dependencies
   // eslint-disable-next-line @typescript-eslint/no-require-imports
   const { PANEL_REGISTRY } = require("../config/panelRegistry");
-  return PANEL_REGISTRY.find((p: PanelConfig) => p.id === panelId);
+  /* eslint-disable @typescript-eslint/no-explicit-any */
+  // biome-ignore lint/suspicious/noExplicitAny: Dynamic lookup requires flexible type
+  return PANEL_REGISTRY.find((p: PanelConfig<any>) => p.id === panelId);
+  /* eslint-enable @typescript-eslint/no-explicit-any */
 }
 
 /** Create default layout based on a list of panel configs */

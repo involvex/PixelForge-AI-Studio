@@ -1,3 +1,4 @@
+import isElectron from "is-electron";
 import {
   Check,
   Edit2,
@@ -10,6 +11,7 @@ import {
 } from "lucide-react";
 import type React from "react";
 import { useEffect, useState } from "react";
+import version from "../package.json";
 import { type PluginInstance, pluginManager } from "../systems/PluginManager";
 import {
   DEFAULT_HOTKEYS,
@@ -41,8 +43,6 @@ interface SettingsModalProps {
     | "repo"
     | "hotkeys";
 }
-import version from "../package.json";
-import isElectron from "is-electron";
 
 const SettingsModal: React.FC<SettingsModalProps> = ({
   isOpen,

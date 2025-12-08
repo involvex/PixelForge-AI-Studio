@@ -1,6 +1,6 @@
+import { ArrowRight, Maximize, Move, RotateCw, X } from "lucide-react";
 import type React from "react";
 import { useState } from "react";
-import { X, Move, RotateCw, Maximize, ArrowRight } from "lucide-react";
 
 interface TransformationModalProps {
   isOpen: boolean;

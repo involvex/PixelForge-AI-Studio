@@ -1,7 +1,7 @@
 import type React from "react";
 import { useState } from "react";
-import FileMenu from "./menubar/FileMenu";
 import EditMenu from "./menubar/EditMenu";
+import FileMenu from "./menubar/FileMenu";
 import ViewMenu from "./menubar/ViewMenu";
 
 interface MenuBarProps {

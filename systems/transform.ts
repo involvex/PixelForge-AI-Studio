@@ -1,4 +1,4 @@
-import { type Frame } from "../types";
+import type { Frame } from "../types";
 import { createEmptyGrid } from "../utils/drawingUtils";
 
 export interface TransformOptions {
