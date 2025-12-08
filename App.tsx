@@ -43,7 +43,7 @@ import {
   savePanelLayout,
   togglePanel,
 } from "./systems/layoutManager";
-import { transformLayer, type TransformOptions } from "./systems/transform";
+import { type TransformOptions, transformLayer } from "./systems/transform";
 import {
   createProjectFromTemplate,
   createTemplate,
@@ -118,7 +118,6 @@ interface HistoryState {
 }
 
 function App() {
-  const fileInputRef = useRef<HTMLInputElement>(null);
   // --- State ---
   const [width, setWidth] = useState(DEFAULT_SIZE);
   const [height, setHeight] = useState(DEFAULT_SIZE);
@@ -143,9 +142,15 @@ function App() {
       delay: 100,
     },
   ]);
+
   const [currentFrameIndex, setCurrentFrameIndex] = useState(0);
 
   const [selectedTool, setSelectedTool] = useState<ToolType>(ToolType.PENCIL);
+
+  // Ref for file input (Load Project) - ensure this is the only declaration or remove the previous one
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const importLayerInputRef = useRef<HTMLInputElement>(null);
+
   const [selectMode, setSelectMode] = useState<SelectMode>(SelectMode.BOX);
   const [wandTolerance, setWandTolerance] = useState(32);
   const [primaryColor, setPrimaryColor] = useState("#ffffff");
@@ -1125,7 +1130,14 @@ function App() {
       <MenuBar
         onNew={handleNewProject}
         onOpen={() => fileInputRef.current?.click()}
+        onOpenAsLayers={() => importLayerInputRef.current?.click()}
         onSave={saveProject}
+        onSaveAs={saveProject} // Reuse save for now
+        onRevert={() => {
+          if (confirm("Revert to last saved state? (Reloads page)")) {
+            window.location.reload();
+          }
+        }}
         onExport={() => setShowExport(true)}
         onUndo={performUndo}
         onRedo={performRedo}
@@ -1681,6 +1693,55 @@ function App() {
         isOpen={showCreateTemplateModal}
         onClose={() => setShowCreateTemplateModal(false)}
         onSave={handleSaveTemplate}
+      />
+
+      {/* Hidden File Inputs */}
+      <input
+        type="file"
+        ref={fileInputRef}
+        accept=".json"
+        className="hidden"
+        onChange={e => {
+          const file = e.target.files?.[0];
+          if (!file) return;
+          const reader = new FileReader();
+          reader.onload = evt => {
+            try {
+              const json = JSON.parse(evt.target?.result as string);
+              if (json.width && json.height && json.frames && json.layers) {
+                if (
+                  confirm(
+                    "Load project from " +
+                      file.name +
+                      "? Unsaved changes will be lost.",
+                  )
+                ) {
+                  setWidth(json.width);
+                  setHeight(json.height);
+                  setFrames(json.frames);
+                  setLayers(json.layers);
+                  setActiveLayerId(json.activeLayerId || json.layers[0]?.id);
+                  setCurrentFrameIndex(0);
+                }
+              }
+            } catch {
+              alert("Invalid project file");
+            }
+          };
+          reader.readAsText(file);
+          // Reset value so same file can be selected again
+          e.target.value = "";
+        }}
+      />
+      <input
+        type="file"
+        ref={importLayerInputRef}
+        accept="image/*"
+        className="hidden"
+        onChange={e => {
+          handleImportSpritesheet(e);
+          e.target.value = "";
+        }}
       />
     </div>
   );

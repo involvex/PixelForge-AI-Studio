@@ -7,7 +7,10 @@ import ViewMenu from "./menubar/ViewMenu";
 interface MenuBarProps {
   onNew: () => void;
   onOpen: () => void;
+  onOpenAsLayers?: () => void;
   onSave: () => void;
+  onSaveAs?: () => void;
+  onRevert?: () => void;
   onExport: () => void;
   onUndo: () => void;
   onRedo: () => void;
@@ -36,7 +39,10 @@ interface MenuBarProps {
 const MenuBar: React.FC<MenuBarProps> = ({
   onNew,
   onOpen,
+  onOpenAsLayers,
   onSave,
+  onSaveAs,
+  onRevert,
   onExport,
   onUndo,
   onRedo,
@@ -78,7 +84,10 @@ const MenuBar: React.FC<MenuBarProps> = ({
           onClose={closeMenu}
           onNew={onNew}
           onOpen={onOpen}
+          onOpenAsLayers={onOpenAsLayers}
           onSave={onSave}
+          onSaveAs={onSaveAs}
+          onRevert={onRevert}
           onExport={onExport}
           onCreateTemplate={onCreateTemplate}
         />
@@ -112,5 +121,4 @@ const MenuBar: React.FC<MenuBarProps> = ({
     </div>
   );
 };
-
 export default MenuBar;

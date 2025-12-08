@@ -3,6 +3,7 @@ import type React from "react";
 import { useState } from "react";
 import {
   builtInTemplates,
+  deleteTemplate,
   getAllTemplates,
   type ProjectTemplate,
 } from "../templates/templateManager";
@@ -17,6 +18,7 @@ const TemplateEditor: React.FC<TemplateEditorProps> = ({
   onCancel,
 }) => {
   const [selectedId, setSelectedId] = useState<string>(builtInTemplates[0].id);
+  const [, setUpdateTrigger] = useState(0); // Force re-render on delete
 
   const allTemplates = getAllTemplates();
   const customTemplates = allTemplates.filter(
@@ -81,23 +83,46 @@ const TemplateEditor: React.FC<TemplateEditorProps> = ({
                   Custom Templates
                 </div>
                 {customTemplates.map(t => (
-                  <button
-                    type="button"
-                    key={t.id}
-                    onClick={() => setSelectedId(t.id)}
-                    className={`w-full text-left px-3 py-3 rounded-lg text-sm transition-all flex flex-col gap-1 ${
-                      selectedId === t.id
-                        ? "bg-indigo-600 text-white shadow-md shadow-indigo-900/20"
-                        : "text-gray-300 hover:bg-gray-700 hover:text-white"
-                    }`}
-                  >
-                    <div className="font-medium">{t.name}</div>
-                    <div
-                      className={`text-xs ${selectedId === t.id ? "text-indigo-200" : "text-gray-500"}`}
+                  <div key={t.id} className="flex w-full group/item">
+                    <button
+                      type="button"
+                      onClick={() => setSelectedId(t.id)}
+                      className={`flex-1 text-left px-3 py-3 rounded-l-lg text-sm transition-all flex flex-col gap-1 ${
+                        selectedId === t.id
+                          ? "bg-indigo-600 text-white shadow-md shadow-indigo-900/20"
+                          : "text-gray-300 hover:bg-gray-700 hover:text-white"
+                      }`}
                     >
-                      {t.width}x{t.height} • {t.colorSpace || "RGB"}
-                    </div>
-                  </button>
+                      <div className="font-medium">{t.name}</div>
+                      <div
+                        className={`text-xs ${selectedId === t.id ? "text-indigo-200" : "text-gray-500"}`}
+                      >
+                        {t.width}x{t.height} • {t.colorSpace || "RGB"}
+                      </div>
+                    </button>
+                    <button
+                      type="button"
+                      title="Delete Template"
+                      onClick={e => {
+                        e.stopPropagation();
+                        if (confirm(`Delete template "${t.name}"?`)) {
+                          deleteTemplate(t.id);
+                          if (selectedId === t.id)
+                            setSelectedId(builtInTemplates[0].id);
+                          setUpdateTrigger(prev => prev + 1);
+                          // Force re-render (since allTemplates relies on module state, we might need to force update)
+                          // But TemplateEditor calls getAllTemplates() in render body.
+                          // React won't re-render unless state/props change.
+                          // We need a local state trigger or just forceUpdate.
+                          // A simple way is to toggle a dummy state or just set selectedId (which we did).
+                          // But allTemplates var is calculated in render.
+                        }
+                      }}
+                      className={`px-2 flex items-center justify-center rounded-r-lg border-l border-gray-700/50 hover:bg-red-900/50 text-gray-500 hover:text-red-400 opacity-0 group-hover/item:opacity-100 transition-all ${selectedId === t.id ? "bg-indigo-600 border-indigo-500" : "bg-transparent"}`}
+                    >
+                      <X size={14} />
+                    </button>
+                  </div>
                 ))}
               </>
             )}

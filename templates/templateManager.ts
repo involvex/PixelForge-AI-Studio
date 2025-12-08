@@ -132,6 +132,16 @@ export const getAllTemplates = (): ProjectTemplate[] => {
   return [...builtInTemplates, ...customTemplates];
 };
 
+export const deleteTemplate = (id: string): void => {
+  const index = customTemplates.findIndex(t => t.id === id);
+  if (index !== -1) {
+    customTemplates.splice(index, 1);
+    saveCustomTemplates();
+    return;
+  }
+  throw new Error("Cannot delete built-in templates or template not found.");
+};
+
 export const createProjectFromTemplate = (
   template: ProjectTemplate,
 ): {

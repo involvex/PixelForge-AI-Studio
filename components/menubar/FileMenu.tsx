@@ -8,7 +8,10 @@ interface FileMenuProps {
   onClose: () => void;
   onNew: () => void;
   onOpen: () => void;
+  onOpenAsLayers?: () => void;
   onSave: () => void;
+  onSaveAs?: () => void;
+  onRevert?: () => void;
   onExport: () => void;
   onCreateTemplate: () => void;
 }
@@ -19,7 +22,10 @@ const FileMenu: React.FC<FileMenuProps> = ({
   onClose,
   onNew,
   onOpen,
+  onOpenAsLayers,
   onSave,
+  onSaveAs,
+  onRevert,
   onExport,
   onCreateTemplate,
 }) => {
@@ -54,7 +60,11 @@ const FileMenu: React.FC<FileMenuProps> = ({
       />
       <MenuItem
         label="Open as Layers..."
-        onClick={() => handleNotImplemented("Open as Layers")}
+        onClick={() => {
+          if (onOpenAsLayers) onOpenAsLayers();
+          else handleNotImplemented("Open as Layers");
+          onClose();
+        }}
       />
       {isElectron() && (
         <MenuItem
@@ -80,14 +90,25 @@ const FileMenu: React.FC<FileMenuProps> = ({
       />
       <MenuItem
         label="Save As..."
-        onClick={() => handleNotImplemented("Save As")}
+        onClick={() => {
+          if (onSaveAs) onSaveAs();
+          else handleNotImplemented("Save As");
+          onClose();
+        }}
         shortcut="Ctrl+Shift+S"
       />
       <MenuItem
         label="Save Copy..."
         onClick={() => handleNotImplemented("Save Copy")}
       />
-      <MenuItem label="Revert" onClick={() => handleNotImplemented("Revert")} />
+      <MenuItem
+        label="Revert"
+        onClick={() => {
+          if (onRevert) onRevert();
+          else handleNotImplemented("Revert");
+          onClose();
+        }}
+      />
 
       <MenuSeparator />
 
