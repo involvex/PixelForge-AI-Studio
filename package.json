@@ -3,7 +3,7 @@
   "description": "A Editor for Pixelbased Assets.",
   "author": "Involvex",
   "repository": {
-    "url": "git+https://github.com/involvex/PixelForge-AI-Studio.git",
+    "url": "https://github.com/involvex/PixelForge-AI-Studio.git",
     "type": "git"
   },
   "license": "MIT",
@@ -15,6 +15,7 @@
     "start": "cross-env NODE_ENV=development vite",
     "dev": "cross-env NODE_ENV=development vite",
     "build": "vite build",
+    "test": "playwright test",
     "build:production": "npx vite build --mode production",
     "build:gh-pages": "cross-env GITHUB_ACTIONS=true npm run build:production",
     "preview": "vite preview",
@@ -32,7 +33,7 @@
     "dev:electron": "concurrently \"npm run dev\" \"npm run compile:electron && wait-on http://localhost:3005 && cross-env NODE_ENV=development electron dist/electron/main.js\"",
     "build:electron": "cross-env ELECTRON=true npm run build && npm run compile:electron && electron-builder -c electron-builder.yml",
     "build:electron:portable": "cross-env ELECTRON=true npm run build && npm run compile:electron && electron-builder --win portable -c electron-builder.yml",
-    "electron:debug": "concurrently \"cross-env NODE_ENV=development NODE_OPTIONS=--inspect\" \"npm run dev:electron\"",
+    "electron:debug": "concurrently \"cross-env NODE_ENV=development\" \"npm run dev:electron\"",
     "prepare": "husky",
     "preversion": "npm run format:check && npm run lint:fix && npm run typecheck"
   },
@@ -40,11 +41,13 @@
     "@google/genai": "^1.31.0",
     "cross-env": "^10.1.0",
     "dotenv": "^17.2.3",
+    "electron-log": "^5.4.3",
     "gifenc": "^1.0.3",
     "is-electron": "^2.2.2",
     "jiti": "^2.6.1",
     "jszip": "3.10.1",
     "lucide-react": "^0.556.0",
+    "rc-dock": "^4.0.0-alpha.2",
     "react": "^19.2.1",
     "react-dom": "^19.2.1",
     "update-electron-app": "^3.1.2"
@@ -53,6 +56,7 @@
     "@eslint/css": "^0.14.1",
     "@eslint/js": "^9.39.1",
     "@eslint/json": "^0.14.0",
+    "@playwright/test": "^1.57.0",
     "@types/node": "^22.14.0",
     "@types/react": "^19.2.7",
     "@types/react-dom": "^19.2.3",

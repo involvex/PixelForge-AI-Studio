@@ -11,6 +11,11 @@ export enum ToolType {
   HAND = "HAND",
 }
 
+export enum SelectMode {
+  BOX = "BOX",
+  BRUSH = "BRUSH",
+}
+
 export interface Coordinates {
   x: number;
   y: number;

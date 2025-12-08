@@ -1,17 +1,21 @@
 import type React from "react";
 import { useCallback, useEffect, useRef, useState } from "react";
-import { ToolType, type Coordinates, type Layer } from "../types";
+import { SelectMode, ToolType, type Coordinates, type Layer } from "../types";
 import {
+  drawOnMask,
   extractSelectedPixels,
   floodFill,
   getCoordinates,
   magicWandSelect,
   mergePixels,
   rasterizePolygon,
-  rasterizeTransform,
-  rasterizeTransformMask,
   shiftMask,
 } from "../utils/drawingUtils";
+import {
+  rasterizeTransform,
+  rasterizeTransformMask,
+  type TransformState,
+} from "../utils/transform";
 
 interface EditorCanvasProps {
   width: number;
@@ -38,21 +42,9 @@ interface EditorCanvasProps {
   historyVersion: number;
   gridSize?: number;
   onContextMenu?: (e: React.MouseEvent) => void;
-}
-
-interface TransformState {
-  x: number;
-  y: number;
-  width: number;
-  height: number;
-  rotation: number; // Radians
-  scaleX: number;
-  scaleY: number;
-  // Source data for the transform
-  sourcePixels: (string | null)[][];
-  sourceMask: boolean[][];
-  sourceWidth: number;
-  sourceHeight: number;
+  selectMode?: SelectMode;
+  wandTolerance?: number;
+  onCursorMove?: (x: number | null, y: number | null) => void;
 }
 
 const EditorCanvas: React.FC<EditorCanvasProps> = ({
@@ -75,6 +67,9 @@ const EditorCanvas: React.FC<EditorCanvasProps> = ({
   gridColor,
   // historyVersion,
   onContextMenu,
+  selectMode,
+  wandTolerance = 0,
+  onCursorMove,
 }) => {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const [isDrawing, setIsDrawing] = useState(false);
@@ -162,6 +157,96 @@ const EditorCanvas: React.FC<EditorCanvasProps> = ({
       canvas.removeEventListener("wheel", handleWheel);
     };
   }, [onZoomChange, zoom]);
+
+  // Initialize Transform when tool is selected
+  useEffect(() => {
+    if (
+      selectedTool === ToolType.TRANSFORM &&
+      !transformState &&
+      activeLayerId &&
+      layerPixels[activeLayerId]
+    ) {
+      const currentPixels = layerPixels[activeLayerId];
+      // Use selection mask if available, otherwise full layer
+      const mask = selectionMask
+        ? selectionMask
+        : Array(height)
+            .fill(true)
+            .map(() => Array(width).fill(true));
+
+      // Calculate bounds
+      let minX = width;
+      let minY = height;
+      let maxX = 0;
+      let maxY = 0;
+      let hasContent = false;
+
+      for (let y = 0; y < height; y++) {
+        for (let x = 0; x < width; x++) {
+          if (mask[y][x] && currentPixels[y][x]) {
+            minX = Math.min(minX, x);
+            minY = Math.min(minY, y);
+            maxX = Math.max(maxX, x);
+            maxY = Math.max(maxY, y);
+            hasContent = true;
+          }
+        }
+      }
+
+      if (!hasContent) return;
+
+      const { cutPixels, floatingPixels } = extractSelectedPixels(
+        currentPixels,
+        mask,
+        width,
+        height,
+      );
+
+      // Crop floating pixels to bounds for sourcePixels
+      const sourceWidth = maxX - minX + 1;
+      const sourceHeight = maxY - minY + 1;
+      const sourcePixels = Array(sourceHeight)
+        .fill(null)
+        .map(() => Array(sourceWidth).fill(null));
+      const sourceMask = Array(sourceHeight)
+        .fill(false)
+        .map(() => Array(sourceWidth).fill(false));
+
+      for (let y = 0; y < sourceHeight; y++) {
+        for (let x = 0; x < sourceWidth; x++) {
+          const sx = x + minX;
+          const sy = y + minY;
+          sourcePixels[y][x] = floatingPixels[sy][sx];
+          sourceMask[y][x] = !!floatingPixels[sy][sx];
+        }
+      }
+
+      onUpdateLayerPixels(activeLayerId, cutPixels);
+
+      setTransformState({
+        x: minX,
+        y: minY,
+        width: sourceWidth,
+        height: sourceHeight,
+        rotation: 0,
+        scaleX: 1,
+        scaleY: 1,
+        sourcePixels,
+        sourceMask,
+        sourceWidth,
+        sourceHeight,
+      });
+    }
+  }, [
+    selectedTool,
+    transformState,
+    activeLayerId,
+    layerPixels,
+    selectionMask,
+    width,
+    height,
+    onUpdateLayerPixels,
+  ]);
 
   // Commit function for Transform
   const commitTransform = useCallback(() => {
@@ -492,6 +577,12 @@ const EditorCanvas: React.FC<EditorCanvasProps> = ({
     panOffset,
     selectionStart,
     selectionEnd,
+    gridColor,
+    gridSize,
+    isDrawing,
+    lassoPoints.length,
+    lassoPoints[0]?.x,
+    lassoPoints[0]?.y,
   ]);
 
   const handlePointerDown = (e: React.MouseEvent | React.TouchEvent) => {
@@ -501,7 +592,7 @@ const EditorCanvas: React.FC<EditorCanvasProps> = ({
     // Adjust coordinates for Pan
     const rect = canvas.getBoundingClientRect();
 
-    let clientX, clientY;
+    let clientX: number, clientY: number;
     if ("touches" in e) {
       clientX = e.touches[0].clientX;
       clientY = e.touches[0].clientY;
@@ -740,6 +831,13 @@ const EditorCanvas: React.FC<EditorCanvasProps> = ({
     }
 
     if (selectedTool === ToolType.SELECT) {
+      if (selectMode === SelectMode.BRUSH) {
+        // Selection Brush Logic
+        onDrawStart(); // Record history
+        setIsDrawing(true);
+        handleDraw(e);
+        return;
+      }
       setSelectionStart(coords);
       setSelectionEnd(coords);
       setSelectionMask(null);
@@ -874,6 +972,10 @@ const EditorCanvas: React.FC<EditorCanvasProps> = ({
       y: Math.floor((rawY - panOffset.y) / zoom),
     };
 
+    if (onCursorMove) {
+      onCursorMove(coords.x, coords.y);
+    }
+
     if (
       coords &&
       coords.x >= 0 &&
@@ -996,12 +1098,30 @@ const EditorCanvas: React.FC<EditorCanvasProps> = ({
     const canvas = canvasRef.current;
     if (!canvas) return;
 
-    const activeLayer = layers.find(l => l.id === activeLayerId);
-    if (!activeLayer || !activeLayer.visible || activeLayer.locked) return;
-
     const coords = getCoordinates(e, canvas, zoom);
     if (!coords) return;
     const { x, y } = coords;
+
+    // Selection Brush Logic (Bypasses layer locks)
+    if (selectedTool === ToolType.SELECT && selectMode === SelectMode.BRUSH) {
+      // Use primary color? No, use boolean true.
+      // Maybe use Alt key to subtract? (value = !e.altKey)
+      // For now simple additive brush.
+      const newMask = drawOnMask(
+        selectionMask,
+        x,
+        y,
+        3, // Brush size
+        true, // Add
+        width,
+        height,
+      );
+      setSelectionMask(newMask);
+      return;
+    }
+
+    const activeLayer = layers.find(l => l.id === activeLayerId);
+    if (!activeLayer || !activeLayer.visible || activeLayer.locked) return;
 
     if (x < 0 || x >= width || y < 0 || y >= height) return;
 
@@ -1011,7 +1131,14 @@ const EditorCanvas: React.FC<EditorCanvasProps> = ({
     // Handle Selection Interactions
     if (selectedTool === ToolType.MAGIC_WAND) {
       if (isDrawing && (e.type === "mousedown" || e.type === "touchstart")) {
-        const mask = magicWandSelect(currentPixels, x, y, width, height);
+        const mask = magicWandSelect(
+          currentPixels,
+          x,
+          y,
+          width,
+          height,
+          wandTolerance,
+        );
         setSelectionMask(mask);
         setIsDrawing(false);
       }
@@ -1071,6 +1198,7 @@ const EditorCanvas: React.FC<EditorCanvasProps> = ({
       onMouseMove={handlePointerMove}
       onMouseUp={handlePointerUp}
       onMouseLeave={() => {
+        if (onCursorMove) onCursorMove(null, null);
         if (
           selectedTool !== ToolType.MOVE &&
           selectedTool !== ToolType.TRANSFORM

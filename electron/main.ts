@@ -1,20 +1,50 @@
+// import "ts-node/register";
 import electron from "electron";
 import electronDebug from "electron-debug";
 import isDev from "electron-is-dev";
-import fs from "fs";
-import path from "path";
-import { fileURLToPath } from "url";
-import { updateElectronApp } from "update-electron-app";
+import fs from "node:fs";
+import path from "node:path";
+import { fileURLToPath } from "node:url";
+import { updateElectronApp, UpdateSourceType } from "update-electron-app";
+import logger from "electron-log";
+import debug from "debug";
 
-updateElectronApp({
-  notifyUser: true,
-});
+if (!isDev) {
+  updateElectronApp({
+    notifyUser: true,
+    updateSource: {
+      type: UpdateSourceType.ElectronPublicUpdateService,
+      repo: "involvex/PixelForge-AI-Studio",
+    },
+    updateInterval: "1 hour",
+    logger: logger,
+  });
+} else {
+  const testupdateElectronApp = updateElectronApp;
+  testupdateElectronApp({
+    notifyUser: true,
+    updateSource: {
+      type: UpdateSourceType.ElectronPublicUpdateService,
+      repo: "involvex/PixelForge-AI-Studio",
+    },
+    updateInterval: "1 hour",
+    logger: logger,
+  });
+  if (isDev) {
+    console.log("Update Electron App");
+  } else {
+    console.log("Update Electron App not enabled");
+  }
+}
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
-electronDebug();
-
+electronDebug({ showDevTools: isDev });
+if (debug.enabled("true")) {
+  electronDebug({ showDevTools: true });
+  console.log("Electron Debug enabled");
+}
 let mainWindow: electron.BrowserWindow | null = null;
 let tray: electron.Tray | null = null;
 let isQuitting = false;

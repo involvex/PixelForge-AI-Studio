@@ -1,0 +1,87 @@
+import type { PanelConfig } from "../systems/layoutManager";
+import AIPanel from "../components/AIPanel";
+import AdjustmentsPanel from "../components/AdjustmentsPanel";
+import AnimationPanel from "../components/AnimationPanel";
+import LayerPanel from "../components/LayerPanel";
+import PalettePanel from "../components/PalettePanel";
+import SettingsPanel from "../components/SettingsPanel";
+
+/**
+ * Central registry of all available panels in the application
+ */
+export const PANEL_REGISTRY: PanelConfig[] = [
+  {
+    id: "layers",
+    title: "Layers",
+    component: LayerPanel,
+    icon: "Layers",
+    defaultVisible: true,
+    defaultPosition: "right",
+    minWidth: 250,
+    minHeight: 200,
+  },
+  {
+    id: "palettes",
+    title: "Palettes",
+    component: PalettePanel,
+    icon: "Palette",
+    defaultVisible: true,
+    defaultPosition: "right",
+    minWidth: 250,
+    minHeight: 150,
+  },
+  {
+    id: "ai",
+    title: "AI Generation",
+    component: AIPanel,
+    icon: "Sparkles",
+    defaultVisible: false,
+    defaultPosition: "right",
+    minWidth: 300,
+    minHeight: 200,
+  },
+  {
+    id: "animation",
+    title: "Animation",
+    component: AnimationPanel,
+    icon: "Film",
+    defaultVisible: true,
+    defaultPosition: "bottom",
+    minWidth: 200,
+    minHeight: 120,
+  },
+  {
+    id: "adjustments",
+    title: "Adjustments",
+    component: AdjustmentsPanel,
+    icon: "Sliders",
+    defaultVisible: false,
+    defaultPosition: "floating",
+    minWidth: 250,
+    minHeight: 150,
+  },
+  {
+    id: "settings",
+    title: "Settings",
+    component: SettingsPanel,
+    icon: "Settings",
+    defaultVisible: false,
+    defaultPosition: "floating",
+    minWidth: 300,
+    minHeight: 200,
+  },
+];
+
+/**
+ * Get a panel configuration by ID
+ */
+export function getPanelConfig(panelId: string): PanelConfig | undefined {
+  return PANEL_REGISTRY.find(p => p.id === panelId);
+}
+
+/**
+ * Get all panel IDs
+ */
+export function getAllPanelIds(): string[] {
+  return PANEL_REGISTRY.map(p => p.id);
+}

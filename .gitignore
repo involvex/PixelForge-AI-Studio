@@ -35,3 +35,10 @@ __pycache__
 .pytest_cache
 
 .cspell.json
+
+# Playwright
+/test-results/
+/playwright-report/
+/blob-report/
+/playwright/.cache/
+/playwright/.auth/

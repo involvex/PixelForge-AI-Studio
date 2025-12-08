@@ -12,7 +12,7 @@ import {
   Wand,
 } from "lucide-react";
 import React from "react";
-import { ToolType } from "../types";
+import { SelectMode, ToolType } from "../types";
 
 interface ToolbarProps {
   selectedTool: ToolType;
@@ -22,6 +22,10 @@ interface ToolbarProps {
   secondaryColor: string;
   setSecondaryColor: (color: string) => void;
   onReplaceColor: () => void;
+  selectMode?: SelectMode;
+  setSelectMode?: (mode: SelectMode) => void;
+  wandTolerance?: number;
+  setWandTolerance?: (tol: number) => void;
 }
 
 const Toolbar: React.FC<ToolbarProps> = ({
@@ -32,6 +36,10 @@ const Toolbar: React.FC<ToolbarProps> = ({
   secondaryColor,
   setSecondaryColor,
   onReplaceColor,
+  selectMode,
+  setSelectMode,
+  wandTolerance,
+  setWandTolerance,
 }) => {
   const tools = [
     { type: ToolType.PENCIL, icon: <Pencil size={20} />, label: "Pencil (P)" },
@@ -74,6 +82,7 @@ const Toolbar: React.FC<ToolbarProps> = ({
     <div className="flex flex-col items-center w-full gap-4">
       {tools.map(tool => (
         <button
+          type="button"
           key={tool.type}
           onClick={() => setTool(tool.type)}
           className={`p-3 rounded-xl transition-all ${
@@ -86,6 +95,45 @@ const Toolbar: React.FC<ToolbarProps> = ({
           {tool.icon}
         </button>
       ))}
+
+      {/* Select Tool Options */}
+      {selectedTool === ToolType.SELECT && selectMode && setSelectMode && (
+        <div className="flex flex-col gap-1 mt-2 p-1 bg-gray-900 rounded border border-gray-700 w-[90%]">
+          <button
+            type="button"
+            onClick={() => setSelectMode(SelectMode.BOX)}
+            className={`text-[10px] px-1 py-1 rounded ${selectMode === SelectMode.BOX ? "bg-indigo-600 text-white" : "text-gray-400 hover:text-white"}`}
+          >
+            Box
+          </button>
+          <button
+            type="button"
+            onClick={() => setSelectMode(SelectMode.BRUSH)}
+            className={`text-[10px] px-1 py-1 rounded ${selectMode === SelectMode.BRUSH ? "bg-indigo-600 text-white" : "text-gray-400 hover:text-white"}`}
+          >
+            Brush
+          </button>
+        </div>
+      )}
+
+      {/* Magic Wand Options */}
+      {selectedTool === ToolType.MAGIC_WAND &&
+        wandTolerance !== undefined &&
+        setWandTolerance && (
+          <div className="flex flex-col gap-1 mt-2 p-1 bg-gray-900 rounded border border-gray-700 w-[90%]">
+            <label className="text-[10px] text-gray-400">
+              Tolerance: {wandTolerance}
+            </label>
+            <input
+              type="range"
+              min="0"
+              max="255"
+              value={wandTolerance}
+              onChange={e => setWandTolerance(Number(e.target.value))}
+              className="w-full h-1 bg-gray-600 rounded-lg appearance-none cursor-pointer"
+            />
+          </div>
+        )}
 
       <div className="mt-auto flex flex-col items-center gap-3 mb-2 pt-4 border-t border-gray-800 w-full">
         <div className="relative group">
@@ -101,6 +149,7 @@ const Toolbar: React.FC<ToolbarProps> = ({
         </div>
 
         <button
+          type="button"
           onClick={onReplaceColor}
           className="p-1.5 rounded-full bg-gray-800 hover:bg-indigo-600 hover:text-white text-gray-400 transition-colors"
           title="Replace Primary with Secondary on current frame"

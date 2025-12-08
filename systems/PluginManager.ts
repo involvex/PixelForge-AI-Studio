@@ -122,7 +122,7 @@ class PluginManager {
 
   public disablePlugin(id: string) {
     const plugin = this.plugins.get(id);
-    if (plugin && plugin.isActive) {
+    if (plugin?.isActive) {
       if (plugin.onUnload) plugin.onUnload();
       plugin.isActive = false;
       console.log(`Plugin ${plugin.metadata.name} disabled.`);

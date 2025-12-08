@@ -1,44 +1,57 @@
 import {
   ArrowLeftRight,
   Copy,
-  Download,
   FlipHorizontal,
-  FolderOpen,
-  Layers,
   Maximize2,
   Minimize2,
   MousePointer2,
-  Palette as PaletteIcon,
   Redo,
   Save,
-  Settings,
   Sliders,
   Sparkles,
   Undo,
-  Upload,
   X,
   ZoomIn,
   ZoomOut,
 } from "lucide-react";
 import type React from "react";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import AdjustmentsPanel from "./components/AdjustmentsPanel";
-import AIPanel from "./components/AIPanel";
 import AnimationPanel from "./components/AnimationPanel";
 import AppLoader from "./components/AppLoader";
 import EditorCanvas from "./components/EditorCanvas";
 import ExportModal from "./components/ExportModal";
 import Header from "./components/layout/Header";
 import Sidebar from "./components/layout/Sidebar";
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
 import LayerPanel from "./components/LayerPanel";
 import MenuBar from "./components/MenuBar";
+import StatusBar from "./components/StatusBar";
 import ContextMenu from "./components/ContextMenu";
 import NetworkStatus from "./components/NetworkStatus";
-import PalettePanel from "./components/PalettePanel";
 import SettingsModal from "./components/SettingsModal";
 import SettingsPanel from "./components/SettingsPanel";
+import TemplateEditor from "./components/TemplateEditor";
+import TransformationModal from "./components/TransformationModal";
+import PanelContainer from "./components/PanelContainer";
+import { PANEL_REGISTRY } from "./config/panelRegistry";
+import {
+  createDefaultLayout,
+  isPanelVisible,
+  loadPanelLayout,
+  savePanelLayout,
+  togglePanel,
+  type LayoutState,
+} from "./systems/layoutManager";
+import { applyTheme, defaultTheme, themes } from "./utils/themeUtils";
 import Toolbar from "./components/Toolbar";
-import { type Frame, type Layer, type Palette, ToolType } from "./types";
+import {
+  type Frame,
+  type Layer,
+  type Palette,
+  SelectMode,
+  ToolType,
+} from "./types";
 import {
   contractMask,
   createEmptyGrid,
@@ -47,6 +60,10 @@ import {
   mergePixels,
   replaceColor,
 } from "./utils/drawingUtils";
+import {
+  createProjectFromTemplate,
+  type ProjectTemplate,
+} from "./templates/templateManager";
 import {
   createGif,
   createSpriteSheet,
@@ -58,7 +75,7 @@ import {
   getHotkeys,
   type HotkeyMap,
 } from "./utils/hotkeyUtils";
-import { defaultTheme } from "./utils/themeUtils";
+
 // import isElectron from "is-electron";
 
 const DEFAULT_SIZE = 32;
@@ -100,6 +117,7 @@ interface HistoryState {
 }
 
 function App() {
+  const fileInputRef = useRef<HTMLInputElement>(null);
   // --- State ---
   const [width, setWidth] = useState(DEFAULT_SIZE);
   const [height, setHeight] = useState(DEFAULT_SIZE);
@@ -127,11 +145,32 @@ function App() {
   const [currentFrameIndex, setCurrentFrameIndex] = useState(0);
 
   const [selectedTool, setSelectedTool] = useState<ToolType>(ToolType.PENCIL);
+  const [selectMode, setSelectMode] = useState<SelectMode>(SelectMode.BOX);
+  const [wandTolerance, setWandTolerance] = useState(32);
   const [primaryColor, setPrimaryColor] = useState("#ffffff");
   const [secondaryColor, setSecondaryColor] = useState("#000000");
+  const [cursorPos, setCursorPos] = useState<{
+    x: number | null;
+    y: number | null;
+  }>({ x: null, y: null });
 
   const [fps, setFps] = useState(12);
   const [isPlaying, setIsPlaying] = useState(false);
+
+  // --- Modals ---
+  const [showExport, setShowExport] = useState(false);
+  const [isSettingsOpen, setIsSettingsOpen] = useState(false);
+  const [settingsTab, setSettingsTab] = useState<
+    "general" | "themes" | "api" | "plugins" | "about" | "repo" | "hotkeys"
+  >("general");
+  const [showNewProjectModal, setShowNewProjectModal] = useState(false);
+  const [showTransformModal, setShowTransformModal] = useState(false);
+
+  // --- Panels ---
+  const [activeRightTab, setActiveRightTab] = useState<
+    "layers" | "ai" | "palettes"
+  >("layers");
+
   const [gridVisible, setGridVisible] = useState(true);
   const [gridSize, setGridSize] = useState(1);
   const [contextMenu, setContextMenu] = useState<{
@@ -157,14 +196,7 @@ function App() {
   // Version counter to signal canvas to reset transient states (like transform)
   const [historyVersion, setHistoryVersion] = useState(0);
 
-  // Right Sidebar Tab State
-  const [activeRightTab, setActiveRightTab] = useState<
-    "layers" | "ai" | "palettes"
-  >("layers");
-
   // Settings State
-  const [isSettingsOpen, setIsSettingsOpen] = useState(false);
-  const [showExport, setShowExport] = useState(false);
   const [showAdjustments, setShowAdjustments] = useState(false);
   const [zoom, setZoom] = useState(15);
   const [gridColor, setGridColor] = useState("rgba(255, 255, 255, 0.05)");
@@ -178,9 +210,6 @@ function App() {
   const [minimizeToTray, setMinimizeToTray] = useState(
     () => localStorage.getItem("pf_minimizeToTray") === "true",
   );
-  const [settingsTab, setSettingsTab] = useState<
-    "general" | "themes" | "api" | "plugins" | "about" | "repo"
-  >("general");
 
   const [hotkeys, setHotkeys] = useState<HotkeyMap>(getHotkeys());
 
@@ -195,9 +224,11 @@ function App() {
     }
   };
 
-  // Layout State
-  const [rightSidebarWidth, setRightSidebarWidth] = useState(320);
-  const [isResizingSidebar, setIsResizingSidebar] = useState(false);
+  // Panel Layout State
+  const [panelLayout, setPanelLayout] = useState<LayoutState>(() => {
+    const saved = loadPanelLayout();
+    return saved || createDefaultLayout(PANEL_REGISTRY);
+  });
 
   // Electron Listeners
   useEffect(() => {
@@ -210,28 +241,6 @@ function App() {
     }
   }, []);
 
-  // Sidebar Resizing
-  const startResizing = useCallback(() => setIsResizingSidebar(true), []);
-  const stopResizing = useCallback(() => setIsResizingSidebar(false), []);
-  const resize = useCallback(
-    (e: MouseEvent) => {
-      if (isResizingSidebar) {
-        const newWidth = window.innerWidth - e.clientX;
-        setRightSidebarWidth(Math.max(200, Math.min(600, newWidth)));
-      }
-    },
-    [isResizingSidebar],
-  );
-
-  useEffect(() => {
-    window.addEventListener("mousemove", resize);
-    window.addEventListener("mouseup", stopResizing);
-    return () => {
-      window.removeEventListener("mousemove", resize);
-      window.removeEventListener("mouseup", stopResizing);
-    };
-  }, [resize, stopResizing]);
-
   // --- Persistence Effects ---
   useEffect(() => {
     localStorage.setItem("pf_apiKey", apiKey);
@@ -239,11 +248,17 @@ function App() {
 
   useEffect(() => {
     localStorage.setItem("pf_themeId", currentThemeId);
+    const theme = themes.find(t => t.id === currentThemeId) || defaultTheme;
+    applyTheme(theme);
   }, [currentThemeId]);
 
   useEffect(() => {
     localStorage.setItem("pf_minimizeToTray", String(minimizeToTray));
   }, [minimizeToTray]);
+
+  useEffect(() => {
+    savePanelLayout(panelLayout);
+  }, [panelLayout]);
 
   // --- Animation Loop ---
   useEffect(() => {
@@ -374,23 +389,23 @@ function App() {
   // --- Helpers ---
 
   // Updates the pixels of the SPECIFIC layer in the CURRENT frame
-  const updateActiveLayerPixels = (
-    layerId: string,
-    newPixels: (string | null)[][],
-  ) => {
-    setFrames(prev =>
-      prev.map((f, i) => {
-        if (i !== currentFrameIndex) return f;
-        return {
-          ...f,
-          layers: {
-            ...f.layers,
-            [layerId]: newPixels,
-          },
-        };
-      }),
-    );
-  };
+  const updateActiveLayerPixels = useCallback(
+    (layerId: string, newPixels: (string | null)[][]) => {
+      setFrames(prev =>
+        prev.map((f, i) => {
+          if (i !== currentFrameIndex) return f;
+          return {
+            ...f,
+            layers: {
+              ...f.layers,
+              [layerId]: newPixels,
+            },
+          };
+        }),
+      );
+    },
+    [currentFrameIndex],
+  );
 
   const handleResize = (newW: number, newH: number) => {
     if (newW < 1 || newH < 1) return;
@@ -418,6 +433,44 @@ function App() {
       }),
     );
     setSelectionMask(null);
+  };
+
+  // --- Project Actions ---
+  const handleNewProject = () => {
+    setShowNewProjectModal(true);
+  };
+
+  const handleCreateFromTemplate = (template: ProjectTemplate) => {
+    if (
+      confirm(
+        "Are you sure you want to create a new project? Unsaved changes will be lost.",
+      )
+    ) {
+      const {
+        width: newW,
+        height: newH,
+        fps: newFps,
+        layers: newLayers,
+        frames: newFrames,
+      } = createProjectFromTemplate(template);
+
+      setWidth(newW);
+      setHeight(newH);
+      setFps(newFps);
+      setLayers(newLayers);
+      setFrames(newFrames);
+      setActiveLayerId(newLayers[0].id);
+      setCurrentFrameIndex(0);
+      setPast([]);
+      setFuture([]);
+      setSelectionMask(null);
+      setShowNewProjectModal(false);
+    }
+  };
+
+  const handleToggleTheme = () => {
+    const nextTheme = currentThemeId === "light" ? "default" : "light";
+    setCurrentThemeId(nextTheme);
   };
 
   const addFrame = () => {
@@ -612,11 +665,11 @@ function App() {
 
   // --- Selection Operations ---
 
-  const invertSelection = () => {
+  const invertSelection = useCallback(() => {
     if (!selectionMask) return;
     recordHistory();
     setSelectionMask(invertMask(selectionMask));
-  };
+  }, [selectionMask, recordHistory]);
 
   const expandSelection = () => {
     if (!selectionMask) return;
@@ -700,7 +753,7 @@ function App() {
     };
   };
 
-  const saveProject = () => {
+  const saveProject = useCallback(() => {
     const projectData = {
       version: "1.0",
       width,
@@ -722,60 +775,43 @@ function App() {
     link.href = url;
     link.download = `project_${Date.now()}.json`;
     link.click();
-  };
+  }, [
+    width,
+    height,
+    fps,
+    layers,
+    frames,
+    activeLayerId,
+    savedSelections,
+    palettes,
+    activePaletteId,
+  ]);
 
-  const loadProject = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
+  // --- Panel Management ---
+  const handleTogglePanel = useCallback((panelId: string) => {
+    setPanelLayout(prev => togglePanel(prev, panelId));
+  }, []);
 
-    const reader = new FileReader();
-    reader.onload = evt => {
-      try {
-        const data = JSON.parse(evt.target?.result as string);
-        // Basic validation
-        if (data.width && data.height && data.frames && data.layers) {
-          setWidth(data.width);
-          setHeight(data.height);
-          setFps(data.fps || 12);
-          setLayers(data.layers);
-          setFrames(data.frames);
+  // TODO: Will be used when integrating PanelContainer
+  // const handleFloatPanel = useCallback((panelId: string) => {
+  //   setPanelLayout(prev =>
+  //     updatePanelState(prev, panelId, { position: "floating" }),
+  //   );
+  // }, []);
 
-          // Ensure active layer exists
-          const activeExists = data.layers.find(
-            (l: Layer) => l.id === data.activeLayerId,
-          );
-          setActiveLayerId(
-            activeExists ? data.activeLayerId : data.layers[0].id,
-          );
+  // const handleDockPanel = useCallback((panelId: string) => {
+  //   setPanelLayout(prev => {
+  //     const panel = PANEL_REGISTRY.find(p => p.id === panelId);
+  //     if (!panel) return prev;
+  //     return updatePanelState(prev, panelId, {
+  //       position: panel.defaultPosition,
+  //     });
+  //   });
+  // }, []);
 
-          if (data.savedSelections) {
-            setSavedSelections(data.savedSelections);
-          }
-
-          // Load palettes if available
-          if (data.palettes && Array.isArray(data.palettes)) {
-            setPalettes(data.palettes);
-            if (data.activePaletteId) {
-              setActivePaletteId(data.activePaletteId);
-            }
-          }
-
-          setCurrentFrameIndex(0);
-          // Clear history on new project load
-          setPast([]);
-          setFuture([]);
-          alert("Project loaded successfully!");
-        } else {
-          alert("Invalid project file format.");
-        }
-      } catch (err) {
-        console.error(err);
-        alert("Failed to load project.");
-      }
-    };
-    reader.readAsText(file);
-    e.target.value = "";
-  };
+  const handleResetLayout = useCallback(() => {
+    setPanelLayout(createDefaultLayout(PANEL_REGISTRY));
+  }, []);
 
   const handleImportSpritesheet = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -954,7 +990,8 @@ function App() {
           setSelectedTool(ToolType.MOVE);
           break;
         case "TOOL_TRANSFORM":
-          setSelectedTool(ToolType.TRANSFORM);
+          setShowTransformModal(true);
+          // setSelectedTool(ToolType.TRANSFORM);
           break;
         case "TOOL_HAND":
           setSelectedTool(ToolType.HAND);
@@ -993,7 +1030,18 @@ function App() {
     return () => {
       window.removeEventListener("keydown", handleKeyDown);
     };
-  }, [performUndo, performRedo, hotkeys, invertSelection, saveProject]);
+  }, [
+    performUndo,
+    performRedo,
+    hotkeys,
+    invertSelection,
+    saveProject,
+    activeLayerId,
+    currentFrameIndex,
+    frames[currentFrameIndex],
+    selectionMask,
+    updateActiveLayerPixels,
+  ]);
 
   return (
     <div
@@ -1039,6 +1087,39 @@ function App() {
         }
       }}
     >
+      <MenuBar
+        onNew={handleNewProject}
+        onOpen={() => fileInputRef.current?.click()}
+        onSave={saveProject}
+        onExport={() => setShowExport(true)}
+        onUndo={performUndo}
+        onRedo={performRedo}
+        onCut={() => {}}
+        onCopy={() => {}}
+        onPaste={() => {}}
+        onPreference={() => {
+          setSettingsTab("general");
+          setIsSettingsOpen(true);
+        }}
+        onZoomIn={() => onZoomChange(z => Math.min(64, z + 1))}
+        onZoomOut={() => onZoomChange(z => Math.max(1, z - 1))}
+        onFitScreen={() => {
+          const fitW = Math.floor(window.innerWidth / width);
+          const fitH = Math.floor(window.innerHeight / height);
+          onZoomChange(Math.max(1, Math.min(fitW, fitH, 64)));
+        }}
+        onToggleGrid={() => setGridVisible(v => !v)}
+        gridVisible={gridVisible}
+        onToggleTheme={handleToggleTheme}
+        isDarkTheme={currentThemeId !== "light"}
+        panels={PANEL_REGISTRY.map(panel => ({
+          id: panel.id,
+          label: panel.title,
+          visible: isPanelVisible(panelLayout, panel.id),
+        }))}
+        onTogglePanel={handleTogglePanel}
+        onResetLayout={handleResetLayout}
+      />
       <Header
         left={
           <>
@@ -1057,7 +1138,6 @@ function App() {
                     alt="Logo"
                     title="PixelForge"
                     aria-label="PixelForge"
-                    role="img"
                     className="w-full h-full object-contain border border-gray-800 shadow-lg hover:bg-indigo-600 hover:text-white transition-colors hover:border-indigo-600"
                   />
                 </button>
@@ -1066,27 +1146,6 @@ function App() {
                 PixelForge
               </span>
             </div>
-
-            <MenuBar
-              onUndo={performUndo}
-              onRedo={performRedo}
-              onCut={() => {}}
-              onCopy={() => {}}
-              onPaste={() => {}}
-              onClear={() => {
-                const currentFrame = frames[currentFrameIndex];
-                if (currentFrame && currentFrame.layers[activeLayerId]) {
-                  const newGrid = createEmptyGrid(width, height);
-                  updateActiveLayerPixels(activeLayerId, newGrid);
-                }
-              }}
-              onOpenSettings={() => {
-                setSettingsTab("general");
-                setIsSettingsOpen(true);
-              }}
-              setTool={setSelectedTool}
-              setZoom={onZoomChange}
-            />
           </>
         }
         center={
@@ -1147,6 +1206,8 @@ function App() {
             {/* Zoom */}
             <div className="flex items-center gap-1 bg-gray-800 p-0.5 rounded border border-gray-700">
               <button
+                title="Zoom Out (Ctrl+-)"
+                type="button"
                 onClick={() => setZoom(Math.max(1, zoom - 1))}
                 className="p-1 text-gray-400 hover:text-white"
               >
@@ -1156,6 +1217,8 @@ function App() {
                 {zoom}x
               </span>
               <button
+                title="Zoom In (Ctrl++)"
+                type="button"
                 onClick={() => setZoom(Math.min(64, zoom + 1))}
                 className="p-1 text-gray-400 hover:text-white"
               >
@@ -1168,18 +1231,24 @@ function App() {
           <>
             <div className="flex bg-gray-800 rounded p-0.5 border border-gray-700">
               <button
+                title="Layers"
+                type="button"
                 className={`px-3 py-1 text-xs rounded ${activeRightTab === "layers" ? "bg-indigo-600 text-white shadow-sm" : "text-gray-400 hover:text-white"}`}
                 onClick={() => setActiveRightTab("layers")}
               >
                 Layers
               </button>
               <button
+                title="Palettes"
+                type="button"
                 className={`px-3 py-1 text-xs rounded ${activeRightTab === "palettes" ? "bg-indigo-600 text-white shadow-sm" : "text-gray-400 hover:text-white"}`}
                 onClick={() => setActiveRightTab("palettes")}
               >
                 Palettes
               </button>
               <button
+                title="AI"
+                type="button"
                 className={`px-3 py-1 text-xs rounded flex items-center gap-1.5 ${activeRightTab === "ai" ? "bg-indigo-600 text-white shadow-sm" : "text-gray-400 hover:text-white"}`}
                 onClick={() => setActiveRightTab("ai")}
               >
@@ -1212,122 +1281,10 @@ function App() {
                 </div>
               </div>
             )}
-
-            <div className="h-4 w-px bg-gray-700 mx-2" />
-
-            {/* Project/File Ops */}
-            <div className="flex bg-gray-800 rounded p-0.5 border border-gray-700 items-center gap-0.5">
-              <label
-                className="p-1.5 text-gray-400 hover:text-white hover:bg-gray-700 rounded cursor-pointer"
-                title="Load Project"
-              >
-                <FolderOpen size={14} />
-                <input
-                  title="Load Project"
-                  type="file"
-                  accept=".json"
-                  onChange={loadProject}
-                  className="hidden"
-                />
-              </label>
-              <button
-                type="button"
-                onClick={saveProject}
-                className="p-1.5 text-gray-400 hover:text-white hover:bg-gray-700 rounded"
-                title="Save Project"
-              >
-                <Save size={14} />
-              </button>
-              <label
-                className="p-1.5 text-gray-400 hover:text-white hover:bg-gray-700 rounded cursor-pointer"
-                title="Import Sheet"
-              >
-                <Upload size={14} />
-                <input
-                  type="file"
-                  accept="image/*"
-                  onChange={handleImportSpritesheet}
-                  className="hidden"
-                />
-              </label>
-            </div>
-
-            <div className="h-4 w-px bg-gray-700 mx-2" />
-
-            <button
-              type="button"
-              onClick={() => setShowExport(true)}
-              className="px-3 py-1.5 bg-green-600 hover:bg-green-500 text-white text-xs font-bold rounded flex items-center gap-2 shadow-lg shadow-green-900/20"
-            >
-              <Download size={14} />
-              <span>Export</span>
-            </button>
-            <button
-              onClick={() => setIsSettingsOpen(true)}
-              className="p-1.5 text-gray-400 hover:text-white hover:bg-gray-800 rounded transition-colors ml-2"
-              title="Settings"
-            >
-              <Settings size={18} />
-            </button>
+            {/* Project/File Ops moved to Menubar */}
           </>
         }
       />
-
-      {/* Selection Control Bar */}
-      {selectionMask && (
-        <div className="bg-indigo-900/30 border-b border-indigo-500/30 h-10 flex items-center justify-center gap-4 px-4 z-10 animate-in slide-in-from-top duration-200">
-          <span className="text-xs text-indigo-300 font-bold uppercase tracking-wider">
-            Active Selection
-          </span>
-
-          <div className="h-4 w-px bg-indigo-500/30"></div>
-
-          <button
-            type="button"
-            onClick={invertSelection}
-            className="flex items-center gap-1 text-xs text-indigo-200 hover:text-white hover:bg-indigo-500/30 px-2 py-1 rounded"
-            title="Invert Selection"
-          >
-            <ArrowLeftRight size={12} /> Invert
-          </button>
-          <button
-            type="button"
-            onClick={expandSelection}
-            className="flex items-center gap-1 text-xs text-indigo-200 hover:text-white hover:bg-indigo-500/30 px-2 py-1 rounded"
-            title="Expand (Feather)"
-          >
-            <Maximize2 size={12} /> Expand
-          </button>
-          <button
-            type="button"
-            onClick={contractSelection}
-            className="flex items-center gap-1 text-xs text-indigo-200 hover:text-white hover:bg-indigo-500/30 px-2 py-1 rounded"
-            title="Contract (Shrink)"
-          >
-            <Minimize2 size={12} /> Contract
-          </button>
-
-          <div className="h-4 w-px bg-indigo-500/30"></div>
-
-          <button
-            type="button"
-            onClick={saveSelection}
-            className="flex items-center gap-1 text-xs text-indigo-200 hover:text-white hover:bg-indigo-500/30 px-2 py-1 rounded"
-            title="Save Selection"
-          >
-            <Save size={12} /> Save
-          </button>
-
-          <button
-            type="button"
-            onClick={() => setSelectionMask(null)}
-            className="flex items-center gap-1 text-xs text-red-300 hover:text-red-100 hover:bg-red-500/20 px-2 py-1 rounded ml-auto"
-            title="Clear Selection"
-          >
-            <X size={12} /> Clear
-          </button>
-        </div>
-      )}
 
       {/* Selection Control Bar */}
       {selectionMask && (
@@ -1401,9 +1358,14 @@ function App() {
             secondaryColor={secondaryColor}
             setSecondaryColor={setSecondaryColor}
             onReplaceColor={handleReplaceColor}
+            selectMode={selectMode}
+            setSelectMode={setSelectMode}
+            wandTolerance={wandTolerance}
+            setWandTolerance={setWandTolerance}
           />
           <div className="w-10 h-px bg-gray-700 my-2" />
           <button
+            type="button"
             onClick={() => setShowAdjustments(!showAdjustments)}
             className={`p-1.5 rounded ${showAdjustments ? "bg-indigo-600 text-white" : "text-gray-400 hover:text-white hover:bg-gray-800"}`}
             title="Adjustments"
@@ -1411,12 +1373,14 @@ function App() {
             <Sliders size={20} />
           </button>
           <button
+            type="button"
             className="p-1.5 text-gray-400 hover:text-white hover:bg-gray-800 rounded"
             title="Flip Horizontal"
           >
             <FlipHorizontal size={20} />
           </button>
           <button
+            type="button"
             className="p-1.5 text-gray-400 hover:text-white hover:bg-gray-800 rounded"
             title="Clone to All Frames"
           >
@@ -1447,6 +1411,8 @@ function App() {
                 gridSize={gridSize}
                 gridColor={gridColor}
                 setPrimaryColor={setPrimaryColor}
+                selectMode={selectMode}
+                wandTolerance={wandTolerance}
                 selectionMask={selectionMask}
                 setSelectionMask={setSelectionMask}
                 onDrawStart={recordHistory}
@@ -1455,6 +1421,7 @@ function App() {
                   e.preventDefault();
                   setContextMenu({ x: e.clientX, y: e.clientY });
                 }}
+                onCursorMove={(x, y) => setCursorPos({ x, y })}
               />
 
               {contextMenu && (
@@ -1532,81 +1499,66 @@ function App() {
             fps={fps}
             setFps={setFps}
           />
+          <StatusBar
+            cursorX={cursorPos.x}
+            cursorY={cursorPos.y}
+            width={width}
+            height={height}
+            zoom={zoom}
+          />
         </div>
 
-        {/* Resizer Handle */}
-        <div
-          className={`w-1 hover:bg-indigo-500 cursor-col-resize transition-colors flex items-center justify-center group z-10 ${isResizingSidebar ? "bg-indigo-600" : "bg-gray-800"}`}
-          onMouseDown={startResizing}
-        >
-          <div className="h-8 w-0.5 bg-gray-600 group-hover:bg-indigo-300 rounded-full"></div>
-        </div>
-
-        {/* Right Sidebar (Layers, AI, Palettes) */}
-        <div
-          className="flex flex-col h-full bg-gray-900 border-l border-gray-750 shrink-0"
-          style={{ width: rightSidebarWidth }}
-        >
-          {/* Tabs */}
-          <div className="flex border-b border-gray-750 shrink-0">
-            <button
-              type="button"
-              onClick={() => setActiveRightTab("layers")}
-              className={`flex-1 p-3 flex items-center justify-center gap-2 text-sm font-medium hover:bg-gray-800 transition-colors ${activeRightTab === "layers" ? "text-indigo-400 border-b-2 border-indigo-400" : "text-gray-400"}`}
-              title="Layers"
-            >
-              <Layers size={16} />
-            </button>
-            <button
-              type="button"
-              onClick={() => setActiveRightTab("ai")}
-              className={`flex-1 p-3 flex items-center justify-center gap-2 text-sm font-medium hover:bg-gray-800 transition-colors ${activeRightTab === "ai" ? "text-indigo-400 border-b-2 border-indigo-400" : "text-gray-400"}`}
-              title="AI Studio"
-            >
-              <Sparkles size={16} />
-            </button>
-            <button
-              type="button"
-              onClick={() => setActiveRightTab("palettes")}
-              className={`flex-1 p-3 flex items-center justify-center gap-2 text-sm font-medium hover:bg-gray-800 transition-colors ${activeRightTab === "palettes" ? "text-indigo-400 border-b-2 border-indigo-400" : "text-gray-400"}`}
-              title="Palettes"
-            >
-              <PaletteIcon size={16} />
-            </button>
-          </div>
-
-          {/* Content */}
-          <div className="flex-1 overflow-hidden relative">
-            {activeRightTab === "layers" ? (
-              <LayerPanel
-                layers={layers}
-                activeLayerId={activeLayerId}
-                onAddLayer={handleAddLayer}
-                onRemoveLayer={handleRemoveLayer}
-                onSelectLayer={setActiveLayerId}
-                onUpdateLayer={handleUpdateLayer}
-                onMoveLayer={handleMoveLayer}
-                onMergeLayer={handleMergeDown}
-              />
-            ) : activeRightTab === "ai" ? (
-              <AIPanel
-                onApplyImage={handleApplyAIImage}
-                currentCanvasImage={getCompositeDataURL}
-              />
-            ) : (
-              <PalettePanel
-                palettes={palettes}
-                activePaletteId={activePaletteId}
-                onSelectPalette={setActivePaletteId}
-                onCreatePalette={handleCreatePalette}
-                onDeletePalette={handleDeletePalette}
-                onUpdatePalette={handleUpdatePalette}
-                primaryColor={primaryColor}
-                setPrimaryColor={setPrimaryColor}
-              />
-            )}
-          </div>
-        </div>
+        {/* Panel Container - Replaces hardcoded sidebar */}
+        <PanelContainer
+          layout={panelLayout}
+          panels={PANEL_REGISTRY.map(panel => ({
+            ...panel,
+            props:
+              panel.id === "layers"
+                ? {
+                    layers,
+                    activeLayerId,
+                    onAddLayer: handleAddLayer,
+                    onRemoveLayer: handleRemoveLayer,
+                    onSelectLayer: setActiveLayerId,
+                    onUpdateLayer: handleUpdateLayer,
+                    onMoveLayer: handleMoveLayer,
+                    onMergeLayer: handleMergeDown,
+                  }
+                : panel.id === "palettes"
+                  ? {
+                      palettes,
+                      activePaletteId,
+                      onSelectPalette: setActivePaletteId,
+                      onCreatePalette: handleCreatePalette,
+                      onDeletePalette: handleDeletePalette,
+                      onUpdatePalette: handleUpdatePalette,
+                      primaryColor,
+                      setPrimaryColor,
+                    }
+                  : panel.id === "ai"
+                    ? {
+                        onApplyImage: handleApplyAIImage,
+                        currentCanvasImage: getCompositeDataURL,
+                      }
+                    : panel.id === "animation"
+                      ? {
+                          frames,
+                          layers,
+                          currentFrameIndex,
+                          setCurrentFrameIndex,
+                          addFrame,
+                          deleteFrame,
+                          duplicateFrame,
+                          isPlaying,
+                          togglePlay: () => setIsPlaying(!isPlaying),
+                          fps,
+                          setFps,
+                        }
+                      : {},
+          }))}
+          onTogglePanel={handleTogglePanel}
+        />
       </div>
       <NetworkStatus />
 
@@ -1653,6 +1605,22 @@ function App() {
           const url = canvas.toDataURL(`image/${format}`);
           downloadBlob(url, `frame-${currentFrameIndex + 1}.${format}`);
           setShowExport(false);
+        }}
+      />
+
+      {showNewProjectModal && (
+        <TemplateEditor
+          onSelect={handleCreateFromTemplate}
+          onCancel={() => setShowNewProjectModal(false)}
+        />
+      )}
+
+      <TransformationModal
+        isOpen={showTransformModal}
+        onClose={() => setShowTransformModal(false)}
+        onApply={opts => {
+          console.log("Applying transform:", opts);
+          // TODO: Call systems/transform.ts here
         }}
       />
 

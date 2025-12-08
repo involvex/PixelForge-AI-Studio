@@ -40,6 +40,7 @@ export const DEFAULT_HOTKEYS: HotkeyMap = {
   i: "TOOL_PICKER",
   m: "TOOL_MOVE",
   t: "TOOL_TRANSFORM",
+  "mod+t": "TOOL_TRANSFORM",
   h: "TOOL_HAND",
   s: "TOOL_SELECT",
   w: "TOOL_WAND",

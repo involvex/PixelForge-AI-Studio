@@ -67,6 +67,16 @@ export const floodFill = (
   return newPixels;
 };
 
+// Helper to compute color distance
+const getColorDistance = (
+  c1: { r: number; g: number; b: number },
+  c2: { r: number; g: number; b: number },
+) => {
+  return Math.sqrt(
+    (c1.r - c2.r) ** 2 + (c1.g - c2.g) ** 2 + (c1.b - c2.b) ** 2,
+  );
+};
+
 // Magic Wand Selection (returns mask)
 export const magicWandSelect = (
   pixels: (string | null)[][],
@@ -74,25 +84,79 @@ export const magicWandSelect = (
   startY: number,
   width: number,
   height: number,
+  tolerance: number = 0,
 ): boolean[][] => {
-  const targetColor = pixels[startY][startX];
+  const startHex = pixels[startY][startX];
+  if (!startHex) {
+    // If clicking on empty pixel, select all connected empty pixels?
+    // Or just empty pixels within tolerance? Empty pixels don't have RGB usually.
+    // Let's assume matching nulls exactly for now.
+    const visited = new Int8Array(width * height); // 0 = unvisited, 1 = visited
+    const mask = Array(height)
+      .fill(false)
+      .map(() => Array(width).fill(false));
+    const stack: [number, number][] = [[startX, startY]];
+
+    while (stack.length > 0) {
+      const pop = stack.pop();
+      if (!pop) continue;
+      const [x, y] = pop;
+      const idx = y * width + x;
+
+      if (x < 0 || x >= width || y < 0 || y >= height) continue;
+      if (visited[idx]) continue;
+      visited[idx] = 1;
+
+      if (pixels[y][x] === null) {
+        mask[y][x] = true;
+        stack.push([x + 1, y]);
+        stack.push([x - 1, y]);
+        stack.push([x, y + 1]);
+        stack.push([x, y - 1]);
+      }
+    }
+    return mask;
+  }
+
+  const startRGB = hexToRgb(startHex);
+  if (!startRGB) return createEmptyMask(width, height);
+
+  const visited = new Int8Array(width * height);
   const mask = Array(height)
     .fill(false)
     .map(() => Array(width).fill(false));
   const stack: [number, number][] = [[startX, startY]];
-  const seen = new Set<string>();
 
   while (stack.length > 0) {
     const pop = stack.pop();
     if (!pop) continue;
     const [x, y] = pop;
-    const key = `${x},${y}`;
+    const idx = y * width + x;
 
     if (x < 0 || x >= width || y < 0 || y >= height) continue;
-    if (seen.has(key)) continue;
-    seen.add(key);
+    if (visited[idx]) continue;
+    visited[idx] = 1;
 
-    if (pixels[y][x] === targetColor) {
+    const currentHex = pixels[y][x];
+    let match = false;
+
+    if (!currentHex) {
+      // Treat null as non-match against color? Or diff?
+      match = false;
+    } else if (currentHex === startHex) {
+      match = true;
+    } else {
+      const currentRGB = hexToRgb(currentHex);
+      if (currentRGB) {
+        // Distance max is ~441 (sqrt(255^2 * 3)). Tolerance 0-100? Or 0-255?
+        // Let's treat tolerance as direct distance for detailed control, or percent?
+        // Photoshop tolerance is 0-255.
+        const dist = getColorDistance(startRGB, currentRGB);
+        match = dist <= tolerance;
+      }
+    }
+
+    if (match) {
       mask[y][x] = true;
       stack.push([x + 1, y]);
       stack.push([x - 1, y]);
@@ -219,118 +283,6 @@ export const shiftMask = (
   return newMask;
 };
 
-// --- Transform Logic ---
-
-interface TransformData {
-  x: number;
-  y: number;
-  width: number;
-  height: number;
-  rotation: number; // Radians
-  scaleX: number;
-  scaleY: number;
-}
-
-export const rasterizeTransform = (
-  basePixels: (string | null)[][],
-  sourcePixels: (string | null)[][],
-  transform: TransformData,
-  gridWidth: number,
-  gridHeight: number,
-  sourceWidth: number, // Width of buffer/selection bounds
-  sourceHeight: number, // Height of buffer/selection bounds
-): (string | null)[][] => {
-  // We use Inverse Mapping:
-  // For every pixel in the DESTINATION grid, we calculate where it came from in the SOURCE grid.
-  // If it hits a valid pixel, we paint it.
-
-  const output = basePixels.map(row => [...row]);
-
-  // Precompute Trig
-  const cos = Math.cos(transform.rotation);
-  const sin = Math.sin(transform.rotation);
-
-  // Center of the transformed box (Pivot)
-  // We treat (x,y) in transform as top-left of the bounding box
-  const centerX = transform.x + (transform.width * transform.scaleX) / 2;
-  const centerY = transform.y + (transform.height * transform.scaleY) / 2;
-
-  // We only need to iterate over the bounding box of the transformed shape to save performance,
-  // but iterating full grid is safer/easier for correct implementation.
-  for (let y = 0; y < gridHeight; y++) {
-    for (let x = 0; x < gridWidth; x++) {
-      // 1. Translate pixel to origin relative to pivot
-      const dx = x - centerX;
-      const dy = y - centerY;
-
-      // 2. Rotate backwards
-      const rx = dx * cos + dy * sin;
-      const ry = -dx * sin + dy * cos;
-
-      // 3. Scale backwards
-      const sx = rx / transform.scaleX;
-      const sy = ry / transform.scaleY;
-
-      // 4. Translate back to local source coordinates (0 to sourceWidth)
-      // The source pixels are centered in the source buffer relative to the pivot logic.
-      // Source Buffer center is sourceWidth/2, sourceHeight/2
-      const srcX = Math.round(sx + sourceWidth / 2);
-      const srcY = Math.round(sy + sourceHeight / 2);
-
-      if (srcX >= 0 && srcX < sourceWidth && srcY >= 0 && srcY < sourceHeight) {
-        const color = sourcePixels[srcY][srcX];
-        if (color) {
-          output[y][x] = color;
-        }
-      }
-    }
-  }
-
-  return output;
-};
-
-// Same logic as above but for boolean mask
-export const rasterizeTransformMask = (
-  baseMask: boolean[][] | null,
-  sourceMask: boolean[][], // The mask cutout
-  transform: TransformData,
-  gridWidth: number,
-  gridHeight: number,
-  sourceWidth: number,
-  sourceHeight: number,
-): boolean[][] => {
-  const output = baseMask
-    ? baseMask.map(row => [...row])
-    : Array(gridHeight)
-        .fill(false)
-        .map(() => Array(gridWidth).fill(false));
-
-  const cos = Math.cos(transform.rotation);
-  const sin = Math.sin(transform.rotation);
-  const centerX = transform.x + (transform.width * transform.scaleX) / 2;
-  const centerY = transform.y + (transform.height * transform.scaleY) / 2;
-
-  for (let y = 0; y < gridHeight; y++) {
-    for (let x = 0; x < gridWidth; x++) {
-      const dx = x - centerX;
-      const dy = y - centerY;
-      const rx = dx * cos + dy * sin;
-      const ry = -dx * sin + dy * cos;
-      const sx = rx / transform.scaleX;
-      const sy = ry / transform.scaleY;
-      const srcX = Math.round(sx + sourceWidth / 2);
-      const srcY = Math.round(sy + sourceHeight / 2);
-
-      if (srcX >= 0 && srcX < sourceWidth && srcY >= 0 && srcY < sourceHeight) {
-        if (sourceMask[srcY][srcX]) {
-          output[y][x] = true;
-        }
-      }
-    }
-  }
-  return output;
-};
-
 // --- Selection Mask Helpers ---
 
 export const createEmptyMask = (width: number, height: number): boolean[][] => {
@@ -440,4 +392,36 @@ const pointInPolygon = (
     if (intersect) inside = !inside;
   }
   return inside;
+};
+
+// --- Selection Brush Helpers ---
+
+export const drawOnMask = (
+  mask: boolean[][] | null,
+  x: number,
+  y: number,
+  brushSize: number,
+  value: boolean,
+  width: number,
+  height: number,
+): boolean[][] => {
+  const newMask = mask
+    ? mask.map(row => [...row])
+    : createEmptyMask(width, height);
+
+  const r = Math.floor(brushSize / 2);
+
+  for (let dy = -r; dy <= r; dy++) {
+    for (let dx = -r; dx <= r; dx++) {
+      if (dx * dx + dy * dy <= r * r) {
+        const tx = x + dx;
+        const ty = y + dy;
+        if (tx >= 0 && tx < width && ty >= 0 && ty < height) {
+          newMask[ty][tx] = value;
+        }
+      }
+    }
+  }
+
+  return newMask;
 };

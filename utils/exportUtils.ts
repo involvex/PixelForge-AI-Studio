@@ -140,7 +140,7 @@ export const createSpriteSheet = (
   } else {
     const url = canvas.toDataURL("image/png");
     const win = window.open();
-    win?.document.write('<img src="' + url + '"/>');
+    win?.document.write(`<img src="${url}"/>`);
   }
 };
 
