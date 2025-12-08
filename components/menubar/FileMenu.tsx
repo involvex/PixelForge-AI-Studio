@@ -1,5 +1,5 @@
 import isElectron from "is-electron";
-import React from "react";
+import type React from "react";
 import MenuDropdown, { MenuItem, MenuSeparator } from "./MenuDropdown";
 
 interface FileMenuProps {
@@ -10,6 +10,7 @@ interface FileMenuProps {
   onOpen: () => void;
   onSave: () => void;
   onExport: () => void;
+  onCreateTemplate: () => void;
 }
 
 const FileMenu: React.FC<FileMenuProps> = ({
@@ -20,6 +21,7 @@ const FileMenu: React.FC<FileMenuProps> = ({
   onOpen,
   onSave,
   onExport,
+  onCreateTemplate,
 }) => {
   const handleNotImplemented = (feature: string) => {
     alert(`${feature} is coming soon!`);
@@ -108,7 +110,10 @@ const FileMenu: React.FC<FileMenuProps> = ({
       {/* 4. Create Template */}
       <MenuItem
         label="Create Template..."
-        onClick={() => handleNotImplemented("Create Template")}
+        onClick={() => {
+          onCreateTemplate();
+          onClose();
+        }}
       />
 
       <MenuSeparator />

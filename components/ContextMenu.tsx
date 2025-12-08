@@ -1,4 +1,5 @@
-import React, { useEffect, useRef } from "react";
+import type React from "react";
+import { useEffect, useRef } from "react";
 
 export interface ContextMenuItem {
   label: string;
@@ -46,15 +47,22 @@ const ContextMenu: React.FC<ContextMenuProps> = ({ x, y, items, onClose }) => {
       className="fixed z-50 bg-gray-800 border border-gray-700 rounded shadow-xl py-1 transform transition-opacity duration-75 min-w-[160px]"
       style={style}
       onContextMenu={e => e.preventDefault()} // Prevent native menu inside our menu
+      role="menu"
     >
       {items.map((item, index) => {
         if (item.separator) {
-          return <div key={index} className="h-px bg-gray-700 my-1" />;
+          return (
+            <hr
+              key={`sep-${item.label || index}`}
+              className="h-px bg-gray-700 my-1 border-none"
+            />
+          );
         }
 
         return (
           <button
-            key={index}
+            key={item.label || index}
+            type="button"
             onClick={() => {
               if (!item.disabled && item.action) {
                 item.action();
@@ -67,6 +75,7 @@ const ContextMenu: React.FC<ContextMenuProps> = ({ x, y, items, onClose }) => {
                 ? "text-gray-500 cursor-not-allowed"
                 : "text-gray-200 hover:bg-indigo-600 hover:text-white"
             }`}
+            role="menuitem"
           >
             <span>{item.label}</span>
             {item.shortcut && (

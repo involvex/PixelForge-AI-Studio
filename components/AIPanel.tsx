@@ -376,7 +376,11 @@ const AIPanel: React.FC<AIPanelProps> = ({
         {activeTab === "generate" && (
           <div className="space-y-3">
             <div className="grid grid-cols-2 gap-2">
+              <label htmlFor="ai-aspect-ratio" className="sr-only">
+                Aspect Ratio
+              </label>
               <select
+                id="ai-aspect-ratio"
                 title="Aspect Ratio"
                 value={aspectRatio}
                 onChange={e => setAspectRatio(e.target.value as AspectRatio)}
@@ -386,7 +390,11 @@ const AIPanel: React.FC<AIPanelProps> = ({
                 <option value={AspectRatio.PORTRAIT_9_16}>9:16</option>
                 <option value={AspectRatio.LANDSCAPE_16_9}>16:9</option>
               </select>
+              <label htmlFor="ai-image-size" className="sr-only">
+                Image Size
+              </label>
               <select
+                id="ai-image-size"
                 title="Image Size"
                 value={imageSize}
                 onChange={e => setImageSize(e.target.value as ImageSize)}
@@ -503,14 +511,22 @@ const AIPanel: React.FC<AIPanelProps> = ({
 
             {editMode === "replace_obj" && (
               <div className="grid grid-cols-2 gap-2">
+                <label htmlFor="edit-target" className="sr-only">
+                  Target Object
+                </label>
                 <input
+                  id="edit-target"
                   type="text"
                   placeholder="Target (e.g. Cat)"
                   value={editTarget}
                   onChange={e => setEditTarget(e.target.value)}
                   className="bg-gray-700 text-xs text-white p-2 rounded border border-gray-600 outline-none"
                 />
+                <label htmlFor="edit-replacement" className="sr-only">
+                  Replacement
+                </label>
                 <input
+                  id="edit-replacement"
                   type="text"
                   placeholder="Replace with (e.g. Dog)"
                   value={editReplacement}
@@ -523,6 +539,7 @@ const AIPanel: React.FC<AIPanelProps> = ({
             {editMode === "transform" && (
               <div>
                 <input
+                  id="edit-transform-object"
                   type="text"
                   placeholder="Object to transform (e.g. The sword)"
                   value={editTarget}
@@ -545,7 +562,11 @@ const AIPanel: React.FC<AIPanelProps> = ({
 
         {/* Prompt Input */}
         <div className="flex flex-col gap-2">
+          <label htmlFor="ai-prompt" className="sr-only">
+            AI Prompt
+          </label>
           <textarea
+            id="ai-prompt"
             value={prompt}
             onChange={e => setPrompt(e.target.value)}
             placeholder={

@@ -256,7 +256,7 @@ electron.app.whenReady().then(() => {
 
   electron.ipcMain.handle(
     "save-settings",
-    (event, newSettings: Partial<AppSettings>) => {
+    (_event, newSettings: Partial<AppSettings>) => {
       appSettings = { ...appSettings, ...newSettings };
       saveSettings(appSettings);
       return appSettings;
@@ -266,7 +266,7 @@ electron.app.whenReady().then(() => {
   // Handle API key update from renderer
   electron.ipcMain.on(
     "update-api-key",
-    (event: Electron.Event, apiKey: string) => {
+    (_event: Electron.Event, apiKey: string) => {
       appSettings.geminiApiKey = apiKey;
       saveSettings(appSettings);
       console.log("API Key updated successfully");

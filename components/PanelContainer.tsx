@@ -1,11 +1,16 @@
-import React from "react";
-import type { LayoutState, PanelConfig } from "../systems/layoutManager";
+/** biome-ignore-all assist/source/organizeImports: biome-ignore lint/style/useImportType: biome-ignore lint/style/useImportType */
+import type React from "react";
+import type {
+  LayoutState,
+  PanelConfig,
+  PanelProps,
+} from "../systems/layoutManager";
 import DockablePanel from "./DockablePanel";
 import { isPanelVisible } from "../systems/layoutManager";
 
 interface PanelContainerProps {
   layout: LayoutState;
-  panels: PanelConfig[];
+  panels: PanelConfig<PanelProps>[];
   onTogglePanel: (panelId: string) => void;
   onFloatPanel?: (panelId: string) => void;
   onDockPanel?: (panelId: string) => void;
@@ -38,7 +43,7 @@ const PanelContainer: React.FC<PanelContainerProps> = ({
       isPanelVisible(layout, p.id),
   );
 
-  const renderPanel = (panel: PanelConfig) => {
+  const renderPanel = (panel: PanelConfig<PanelProps>) => {
     const PanelComponent = panel.component;
     const panelState = layout.panels[panel.id];
     const isFloating = panelState?.position === "floating";

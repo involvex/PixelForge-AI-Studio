@@ -1,4 +1,4 @@
-import React from "react";
+import type React from "react";
 
 /**
  * This component generates the proper HTML template structure

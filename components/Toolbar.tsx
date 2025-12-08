@@ -11,7 +11,7 @@ import {
   RefreshCw,
   Wand,
 } from "lucide-react";
-import React from "react";
+import type React from "react";
 import { SelectMode, ToolType } from "../types";
 
 interface ToolbarProps {
@@ -121,10 +121,14 @@ const Toolbar: React.FC<ToolbarProps> = ({
         wandTolerance !== undefined &&
         setWandTolerance && (
           <div className="flex flex-col gap-1 mt-2 p-1 bg-gray-900 rounded border border-gray-700 w-[90%]">
-            <label className="text-[10px] text-gray-400">
+            <label
+              htmlFor="toolbar-wand-tolerance"
+              className="text-[10px] text-gray-400"
+            >
               Tolerance: {wandTolerance}
             </label>
             <input
+              id="toolbar-wand-tolerance"
               type="range"
               min="0"
               max="255"
@@ -137,10 +141,14 @@ const Toolbar: React.FC<ToolbarProps> = ({
 
       <div className="mt-auto flex flex-col items-center gap-3 mb-2 pt-4 border-t border-gray-800 w-full">
         <div className="relative group">
-          <label className="block text-[10px] text-gray-500 mb-1 text-center font-bold">
+          <label
+            htmlFor="toolbar-primary-color"
+            className="block text-[10px] text-gray-500 mb-1 text-center font-bold"
+          >
             PRI
           </label>
           <input
+            id="toolbar-primary-color"
             type="color"
             value={primaryColor}
             onChange={e => setPrimaryColor(e.target.value)}
@@ -158,10 +166,14 @@ const Toolbar: React.FC<ToolbarProps> = ({
         </button>
 
         <div className="relative group">
-          <label className="block text-[10px] text-gray-500 mb-1 text-center font-bold">
+          <label
+            htmlFor="toolbar-secondary-color"
+            className="block text-[10px] text-gray-500 mb-1 text-center font-bold"
+          >
             SEC
           </label>
           <input
+            id="toolbar-secondary-color"
             type="color"
             value={secondaryColor}
             onChange={e => setSecondaryColor(e.target.value)}

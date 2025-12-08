@@ -8,15 +8,16 @@ import {
   Upload,
   X,
 } from "lucide-react";
-import React, { useEffect, useState } from "react";
-import { PluginInstance, pluginManager } from "../systems/PluginManager";
+import type React from "react";
+import { useEffect, useState } from "react";
+import { type PluginInstance, pluginManager } from "../systems/PluginManager";
 import {
   DEFAULT_HOTKEYS,
   type HotkeyAction,
   type HotkeyMap,
   saveHotkeys,
 } from "../utils/hotkeyUtils";
-import { applyTheme, Theme, themes } from "../utils/themeUtils";
+import { applyTheme, type Theme, themes } from "../utils/themeUtils";
 
 interface SettingsModalProps {
   isOpen: boolean;
@@ -185,7 +186,7 @@ const SettingsModal: React.FC<SettingsModalProps> = ({
         setPlugins(pluginManager.getPlugins());
         alert(`Plugin ${name} installed!`);
       } catch (err) {
-        alert("Failed to install plugin: " + err);
+        alert(`Failed to install plugin: ${err}`);
       }
     };
     reader.readAsText(file);
@@ -209,7 +210,11 @@ const SettingsModal: React.FC<SettingsModalProps> = ({
         {/* Header */}
         <div className="h-14 border-b border-gray-700 flex items-center justify-between px-6 bg-gray-900">
           <h2 className="text-lg font-bold text-white">Settings</h2>
-          <button onClick={onClose} className="text-gray-400 hover:text-white">
+          <button
+            type="button"
+            onClick={onClose}
+            className="text-gray-400 hover:text-white"
+          >
             <X size={20} />
           </button>
         </div>
@@ -219,30 +224,35 @@ const SettingsModal: React.FC<SettingsModalProps> = ({
           {/* Sidebar */}
           <div className="w-40 bg-gray-850 border-r border-gray-700 flex flex-col p-2 gap-1">
             <button
+              type="button"
               onClick={() => setActiveTab("general")}
               className={`text-left px-3 py-2 rounded text-sm ${activeTab === "general" ? "bg-indigo-600 text-white" : "text-gray-400 hover:bg-gray-800 hover:text-white"}`}
             >
               General
             </button>
             <button
+              type="button"
               onClick={() => setActiveTab("themes")}
               className={`text-left px-3 py-2 rounded text-sm ${activeTab === "themes" ? "bg-indigo-600 text-white" : "text-gray-400 hover:bg-gray-800 hover:text-white"}`}
             >
               Themes
             </button>
             <button
+              type="button"
               onClick={() => setActiveTab("hotkeys")}
               className={`text-left px-3 py-2 rounded text-sm ${activeTab === "hotkeys" ? "bg-indigo-600 text-white" : "text-gray-400 hover:bg-gray-800 hover:text-white"}`}
             >
               Hotkeys
             </button>
             <button
+              type="button"
               onClick={() => setActiveTab("api")}
               className={`text-left px-3 py-2 rounded text-sm ${activeTab === "api" ? "bg-indigo-600 text-white" : "text-gray-400 hover:bg-gray-800 hover:text-white"}`}
             >
               API Configuration
             </button>
             <button
+              type="button"
               onClick={() => setActiveTab("plugins")}
               className={`text-left px-3 py-2 rounded text-sm ${activeTab === "plugins" ? "bg-indigo-600 text-white" : "text-gray-400 hover:bg-gray-800 hover:text-white"}`}
             >
@@ -250,12 +260,14 @@ const SettingsModal: React.FC<SettingsModalProps> = ({
             </button>
             <div className="h-px bg-gray-700 my-1"></div>
             <button
+              type="button"
               onClick={() => setActiveTab("repo")}
               className={`text-left px-3 py-2 rounded text-sm ${activeTab === "repo" ? "bg-indigo-600 text-white" : "text-gray-400 hover:bg-gray-800 hover:text-white"}`}
             >
               Repository
             </button>
             <button
+              type="button"
               onClick={() => setActiveTab("about")}
               className={`text-left px-3 py-2 rounded text-sm ${activeTab === "about" ? "bg-indigo-600 text-white" : "text-gray-400 hover:bg-gray-800 hover:text-white"}`}
             >
@@ -270,7 +282,10 @@ const SettingsModal: React.FC<SettingsModalProps> = ({
                 <h3 className="text-sm font-bold text-gray-300 uppercase tracking-wider mb-4 border-b border-gray-700 pb-2">
                   App Behavior
                 </h3>
-                <label className="flex items-center gap-3 cursor-pointer group">
+                <label
+                  htmlFor="minimize-tray"
+                  className="flex items-center gap-3 cursor-pointer group"
+                >
                   <div
                     className={`w-5 h-5 rounded border flex items-center justify-center ${minimizeToTray ? "bg-indigo-600 border-indigo-600" : "border-gray-600 group-hover:border-gray-500"}`}
                   >
@@ -279,6 +294,7 @@ const SettingsModal: React.FC<SettingsModalProps> = ({
                     )}
                   </div>
                   <input
+                    id="minimize-tray"
                     type="checkbox"
                     className="hidden"
                     checked={minimizeToTray}
@@ -301,11 +317,18 @@ const SettingsModal: React.FC<SettingsModalProps> = ({
                 </h3>
                 <div className="grid grid-cols-2 gap-3">
                   {themes.map(theme => (
-                    <div
+                    <button
                       key={theme.id}
+                      type="button"
                       onClick={() => handleThemeSelect(theme)}
+                      onKeyDown={e => {
+                        if (e.key === "Enter" || e.key === " ") {
+                          e.preventDefault();
+                          handleThemeSelect(theme);
+                        }
+                      }}
                       className={`
-                        p-3 rounded border cursor-pointer flex items-center justify-between
+                        w-full p-3 rounded border cursor-pointer flex items-center justify-between text-left
                         ${currentThemeId === theme.id ? "border-indigo-500 bg-indigo-900/20" : "border-gray-700 hover:border-gray-500 bg-gray-850"}
                       `}
                     >
@@ -323,7 +346,7 @@ const SettingsModal: React.FC<SettingsModalProps> = ({
                       {currentThemeId === theme.id && (
                         <Check size={16} className="text-indigo-400" />
                       )}
-                    </div>
+                    </button>
                   ))}
                 </div>
 
@@ -332,10 +355,14 @@ const SettingsModal: React.FC<SettingsModalProps> = ({
                     Install Custom Theme
                   </h4>
                   <div className="flex gap-2">
-                    <label className="flex items-center gap-2 px-4 py-2 bg-gray-700 hover:bg-gray-600 rounded text-sm text-gray-200 cursor-pointer w-fit transition-colors">
+                    <label
+                      htmlFor="import-theme"
+                      className="flex items-center gap-2 px-4 py-2 bg-gray-700 hover:bg-gray-600 rounded text-sm text-gray-200 cursor-pointer w-fit transition-colors"
+                    >
                       <Upload size={16} />
                       <span>Import JSON Theme</span>
                       <input
+                        id="import-theme"
                         type="file"
                         accept=".json"
                         className="hidden"
@@ -347,6 +374,7 @@ const SettingsModal: React.FC<SettingsModalProps> = ({
                       />
                     </label>
                     <button
+                      type="button"
                       onClick={() => {
                         const template = JSON.stringify(themes[0], null, 2);
                         const blob = new Blob([template], {
@@ -375,8 +403,12 @@ const SettingsModal: React.FC<SettingsModalProps> = ({
                 </h3>
 
                 <div className="space-y-2">
-                  <label className="text-sm text-gray-400">API Key</label>
+                  <label htmlFor="api-key" className="text-sm text-gray-400">
+                    API Key
+                  </label>
                   <input
+                    id="api-key"
+                    name="apiKey"
                     type="password"
                     value={localApiKey}
                     onChange={e => setLocalApiKey(e.target.value)}
@@ -391,6 +423,7 @@ const SettingsModal: React.FC<SettingsModalProps> = ({
 
                 <div className="pt-2">
                   <button
+                    type="button"
                     onClick={handleSaveApi}
                     className="px-4 py-2 bg-indigo-600 hover:bg-indigo-500 text-white rounded font-medium text-sm transition-colors"
                   >
@@ -405,6 +438,7 @@ const SettingsModal: React.FC<SettingsModalProps> = ({
                 <h3 className="text-sm font-bold text-gray-300 uppercase tracking-wider mb-4 border-b border-gray-700 pb-2 flex justify-between items-center">
                   <span>Plugin Manager</span>
                   <button
+                    type="button"
                     onClick={() => {
                       const template = `// @name My Plugin
 // @version 1.0
@@ -439,10 +473,14 @@ function deactivate(api) {
                 </h3>
 
                 <div className="flex justify-end mb-4">
-                  <label className="flex items-center gap-2 px-3 py-1.5 bg-indigo-600 hover:bg-indigo-500 rounded text-sm text-white cursor-pointer transition-colors shadow-sm">
+                  <label
+                    htmlFor="install-plugin"
+                    className="flex items-center gap-2 px-3 py-1.5 bg-indigo-600 hover:bg-indigo-500 rounded text-sm text-white cursor-pointer transition-colors shadow-sm"
+                  >
                     <Upload size={14} />
                     <span>Install Plugin (.js)</span>
                     <input
+                      id="install-plugin"
                       type="file"
                       accept=".js"
                       className="hidden"
@@ -475,6 +513,7 @@ function deactivate(api) {
                         </div>
                         <div className="flex items-center gap-2">
                           <button
+                            type="button"
                             onClick={() => togglePlugin(plugin)}
                             className={`p-1.5 rounded transition-colors ${plugin.isActive ? "bg-green-500/20 text-green-400 hover:bg-green-500/30" : "bg-gray-700 text-gray-400 hover:bg-gray-600"}`}
                             title={plugin.isActive ? "Disable" : "Enable"}
@@ -485,7 +524,10 @@ function deactivate(api) {
                               <Play size={14} />
                             )}
                           </button>
-                          <button className="p-1.5 rounded hover:bg-red-900/30 text-gray-500 hover:text-red-400 transition-colors">
+                          <button
+                            type="button"
+                            className="p-1.5 rounded hover:bg-red-900/30 text-gray-500 hover:text-red-400 transition-colors"
+                          >
                             <Trash2 size={14} />
                           </button>
                         </div>
@@ -501,6 +543,7 @@ function deactivate(api) {
                 <h3 className="text-sm font-bold text-gray-300 uppercase tracking-wider mb-4 border-b border-gray-700 pb-2 flex justify-between items-center">
                   <span>Keyboard Shortcuts</span>
                   <button
+                    type="button"
                     onClick={() => {
                       if (confirm("Reset all hotkeys to default?")) {
                         setHotkeys(DEFAULT_HOTKEYS);
@@ -532,6 +575,7 @@ function deactivate(api) {
                                 Press new key...
                               </span>
                               <button
+                                type="button"
                                 onClick={() => setEditingAction(null)}
                                 className="p-1 hover:bg-gray-700 rounded text-gray-400"
                               >
@@ -544,6 +588,7 @@ function deactivate(api) {
                                 {combo}
                               </span>
                               <button
+                                type="button"
                                 onClick={() => setEditingAction(action)}
                                 className="p-1 hover:bg-indigo-600 rounded text-gray-500 hover:text-white"
                                 title="Edit Key"
@@ -553,6 +598,7 @@ function deactivate(api) {
                             </>
                           )}
                           <button
+                            type="button"
                             onClick={() => {
                               if (
                                 Object.keys(hotkeys).filter(
@@ -639,7 +685,10 @@ function deactivate(api) {
                     <li>Plugin Development API</li>
                     <li>Keyboard Shortcuts</li>
                   </ul>
-                  <button className="mt-3 text-xs text-indigo-400 hover:text-indigo-300 underline">
+                  <button
+                    type="button"
+                    className="mt-3 text-xs text-indigo-400 hover:text-indigo-300 underline"
+                  >
                     View Full Documentation
                   </button>
                 </div>

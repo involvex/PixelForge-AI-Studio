@@ -98,19 +98,17 @@ const PalettePanel: React.FC<PalettePanelProps> = ({
           <div className="grid grid-cols-6 gap-2">
             {activePalette?.colors.map(color => (
               <div
-                role="button"
-                tabIndex={0}
                 key={color}
-                className="group relative w-full pt-[100%] rounded cursor-pointer border border-gray-600 hover:border-white transition-all shadow-sm"
-                style={{ backgroundColor: color }}
-                onClick={() => setPrimaryColor(color)}
-                onKeyDown={e => {
-                  if (e.key === "Enter" || e.key === " ") {
-                    setPrimaryColor(color);
-                  }
-                }}
-                title={color}
+                className="group relative w-full pt-[100%] rounded border border-gray-600 hover:border-white transition-all shadow-sm"
               >
+                <button
+                  type="button"
+                  className="absolute inset-0 w-full h-full rounded cursor-pointer"
+                  style={{ backgroundColor: color }}
+                  onClick={() => setPrimaryColor(color)}
+                  title={color}
+                />
+
                 {/* Delete overlay */}
                 <button
                   title="Delete Color"
@@ -119,12 +117,13 @@ const PalettePanel: React.FC<PalettePanelProps> = ({
                     e.stopPropagation();
                     removeColor(color);
                   }}
-                  className="absolute -top-1 -right-1 bg-gray-900 rounded-full p-0.5 text-gray-400 hover:text-red-400 opacity-0 group-hover:opacity-100 transition-opacity border border-gray-700 shadow"
+                  className="absolute -top-1 -right-1 z-10 bg-gray-900 rounded-full p-0.5 text-gray-400 hover:text-red-400 opacity-0 group-hover:opacity-100 transition-opacity border border-gray-700 shadow"
                 >
                   <Trash2 size={8} />
                 </button>
+
                 {primaryColor === color && (
-                  <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+                  <div className="absolute inset-0 flex items-center justify-center pointer-events-none z-0">
                     <div className="w-1.5 h-1.5 bg-white rounded-full shadow-sm drop-shadow-md" />
                   </div>
                 )}
@@ -178,6 +177,7 @@ const PalettePanel: React.FC<PalettePanelProps> = ({
           ) : (
             <div className="space-y-2 animate-in fade-in duration-200">
               <input
+                id="new-palette-name"
                 type="text"
                 value={newPaletteName}
                 onChange={e => setNewPaletteName(e.target.value)}

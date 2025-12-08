@@ -3,6 +3,7 @@ import type React from "react";
 import { useState } from "react";
 import {
   builtInTemplates,
+  getAllTemplates,
   type ProjectTemplate,
 } from "../templates/templateManager";
 
@@ -17,7 +18,12 @@ const TemplateEditor: React.FC<TemplateEditorProps> = ({
 }) => {
   const [selectedId, setSelectedId] = useState<string>(builtInTemplates[0].id);
 
-  const selectedTemplate = builtInTemplates.find(t => t.id === selectedId);
+  const allTemplates = getAllTemplates();
+  const customTemplates = allTemplates.filter(
+    t => !builtInTemplates.some(b => b.id === t.id),
+  );
+
+  const selectedTemplate = allTemplates.find(t => t.id === selectedId);
 
   const handleSelect = () => {
     if (selectedTemplate) onSelect(selectedTemplate);
@@ -33,6 +39,7 @@ const TemplateEditor: React.FC<TemplateEditorProps> = ({
             New Project from Template
           </h2>
           <button
+            type="button"
             onClick={onCancel}
             className="text-gray-400 hover:text-white transition-colors"
           >
@@ -49,6 +56,7 @@ const TemplateEditor: React.FC<TemplateEditorProps> = ({
             </div>
             {builtInTemplates.map(t => (
               <button
+                type="button"
                 key={t.id}
                 onClick={() => setSelectedId(t.id)}
                 className={`w-full text-left px-3 py-3 rounded-lg text-sm transition-all flex flex-col gap-1 ${
@@ -65,6 +73,34 @@ const TemplateEditor: React.FC<TemplateEditorProps> = ({
                 </div>
               </button>
             ))}
+
+            {/* Custom Templates Section */}
+            {customTemplates.length > 0 && (
+              <>
+                <div className="px-3 py-2 text-xs font-bold text-gray-500 uppercase tracking-wider mt-4">
+                  Custom Templates
+                </div>
+                {customTemplates.map(t => (
+                  <button
+                    type="button"
+                    key={t.id}
+                    onClick={() => setSelectedId(t.id)}
+                    className={`w-full text-left px-3 py-3 rounded-lg text-sm transition-all flex flex-col gap-1 ${
+                      selectedId === t.id
+                        ? "bg-indigo-600 text-white shadow-md shadow-indigo-900/20"
+                        : "text-gray-300 hover:bg-gray-700 hover:text-white"
+                    }`}
+                  >
+                    <div className="font-medium">{t.name}</div>
+                    <div
+                      className={`text-xs ${selectedId === t.id ? "text-indigo-200" : "text-gray-500"}`}
+                    >
+                      {t.width}x{t.height} • {t.colorSpace || "RGB"}
+                    </div>
+                  </button>
+                ))}
+              </>
+            )}
           </div>
 
           {/* Details Panel */}
@@ -143,12 +179,14 @@ const TemplateEditor: React.FC<TemplateEditorProps> = ({
         {/* Footer */}
         <div className="px-6 py-4 border-t border-gray-700 bg-gray-900 flex justify-end gap-3">
           <button
+            type="button"
             onClick={onCancel}
             className="px-4 py-2 rounded-lg text-sm text-gray-300 hover:text-white hover:bg-gray-800 transition-colors"
           >
             Cancel
           </button>
           <button
+            type="button"
             onClick={handleSelect}
             className="px-6 py-2 rounded-lg text-sm bg-indigo-600 text-white hover:bg-indigo-500 shadow-lg shadow-indigo-900/30 font-semibold transition-all hover:scale-105 active:scale-95"
           >

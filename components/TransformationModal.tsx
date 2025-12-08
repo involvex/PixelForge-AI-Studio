@@ -1,4 +1,5 @@
-import React, { useState } from "react";
+import type React from "react";
+import { useState } from "react";
 import { X, Move, RotateCw, Maximize, ArrowRight } from "lucide-react";
 
 interface TransformationModalProps {
@@ -61,10 +62,14 @@ const TransformationModal: React.FC<TransformationModalProps> = ({
             </div>
             <div className="flex items-center gap-3">
               <div className="flex-1 space-y-1">
-                <label className="text-xs text-gray-500 uppercase font-bold">
+                <label
+                  htmlFor="transform-scale-x"
+                  className="text-xs text-gray-500 uppercase font-bold"
+                >
                   W
                 </label>
                 <input
+                  id="transform-scale-x"
                   type="number"
                   value={scaleX}
                   onChange={e => handleScaleXChange(Number(e.target.value))}
@@ -73,10 +78,14 @@ const TransformationModal: React.FC<TransformationModalProps> = ({
               </div>
               <div className="pt-5 text-gray-500">{locked ? "=" : "x"}</div>
               <div className="flex-1 space-y-1">
-                <label className="text-xs text-gray-500 uppercase font-bold">
+                <label
+                  htmlFor="transform-scale-y"
+                  className="text-xs text-gray-500 uppercase font-bold"
+                >
                   H
                 </label>
                 <input
+                  id="transform-scale-y"
                   type="number"
                   value={scaleY}
                   onChange={e => setScaleY(Number(e.target.value))}
@@ -104,7 +113,11 @@ const TransformationModal: React.FC<TransformationModalProps> = ({
               Rotate (Degrees)
             </div>
             <div className="flex items-center gap-4">
+              <label htmlFor="transform-rotate-range" className="sr-only">
+                Rotate Range
+              </label>
               <input
+                id="transform-rotate-range"
                 type="range"
                 min="-180"
                 max="180"
@@ -113,7 +126,11 @@ const TransformationModal: React.FC<TransformationModalProps> = ({
                 className="flex-1 h-1 bg-gray-600 rounded-lg appearance-none cursor-pointer"
               />
               <div className="w-20 group relative">
+                <label htmlFor="transform-rotate-number" className="sr-only">
+                  Rotate Degrees
+                </label>
                 <input
+                  id="transform-rotate-number"
                   type="number"
                   value={rotate}
                   onChange={e => setRotate(Number(e.target.value))}

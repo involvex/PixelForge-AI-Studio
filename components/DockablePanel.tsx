@@ -1,4 +1,5 @@
-import React, { type ReactNode } from "react";
+import type React from "react";
+import type { ReactNode } from "react";
 import { X, Minimize2, Maximize2 } from "lucide-react";
 
 interface DockablePanelProps {

@@ -65,51 +65,67 @@
       window.ReactAppLoaded = false;
 
       // Fallback loading indicator
-      document.addEventListener("DOMContentLoaded", function () {
+      document.addEventListener("DOMContentLoaded", () => {
         const root = document.getElementById("root");
-        if (root && root.innerHTML.trim() === "") {
-          root.innerHTML =
-            '<div class="loading-fallback">' +
-            '<div class="loading-spinner">' +
-            '<svg viewBox="0 0 100 100" style="width: 100%; height: 100%;">' +
-            "<title>Loading PixelForge AI Studio</title>" +
-            '<circle cx="50" cy="50" r="45" fill="none" stroke="#3b82f6" stroke-width="8" ' +
-            'stroke-dasharray="283" stroke-dashoffset="233" stroke-linecap="round" ' +
-            'transform="rotate(-90 50 50)">' +
-            '<animate attributeName="stroke-dashoffset" from="283" to="0" dur="1.5s" repeatCount="indefinite" />' +
-            "</circle>" +
-            '<text x="50" y="55" text-anchor="middle" fill="#3b82f6" font-size="14" font-weight="bold">Loading...</text>' +
-            "</svg>" +
-            "</div>" +
-            '<h1 style="font-size: 1.5rem; font-weight: bold; margin-bottom: 0.5rem;">PixelForge AI Studio</h1>' +
-            '<p class="loading-text">Preparing pixel art workspace...</p>' +
-            '<div style="color: #6b7280; font-size: 0.875rem; line-height: 1.25;">' +
-            "<p>Loading application components</p>" +
-            "<p>Initializing AI modules</p>" +
-            "<p>Setting up canvas tools</p>" +
-            "</div>" +
-            "</div>";
-
-          // Set timeout for error handling
-          setTimeout(() => {
-            if (!window.ReactAppLoaded) {
-              root.innerHTML =
-                '<div class="loading-fallback">' +
-                '<div class="error-message">' +
-                '<h2 style="font-size: 1.25rem; font-weight: bold; color: #ef4444; margin-bottom: 1rem;">' +
-                "Loading Failed" +
-                "</h2>" +
-                '<p style="color: #f3f4f6; margin-bottom: 1rem;">' +
-                "The application failed to load. This could be due to network issues or browser compatibility problems." +
-                "</p>" +
-                '<button class="retry-button" onclick="window.location.reload()">' +
-                "Retry Loading" +
-                "</button>" +
-                "</div>" +
-                "</div>";
-            }
-          }, 15000);
+        if (!root) {
+          console.error("Root element not found");
+          return;
         }
+
+        // Only show loading fallback if root is empty
+        if (root.innerHTML.trim() !== "") {
+          return;
+        }
+
+        // Loading HTML template
+        const loadingHTML = `
+          <div class="loading-fallback">
+            <div class="loading-spinner">
+              <svg viewBox="0 0 100 100" style="width: 100%; height: 100%;">
+                <title>Loading PixelForge AI Studio</title>
+                <circle cx="50" cy="50" r="45" fill="none" stroke="#3b82f6" stroke-width="8"
+                  stroke-dasharray="283" stroke-dashoffset="233" stroke-linecap="round"
+                  transform="rotate(-90 50 50)">
+                  <animate attributeName="stroke-dashoffset" from="283" to="0" dur="1.5s" repeatCount="indefinite" />
+                </circle>
+                <text x="50" y="55" text-anchor="middle" fill="#3b82f6" font-size="14" font-weight="bold">Loading...</text>
+              </svg>
+            </div>
+            <h1 style="font-size: 1.5rem; font-weight: bold; margin-bottom: 0.5rem;">PixelForge AI Studio</h1>
+            <p class="loading-text">Preparing pixel art workspace...</p>
+            <div style="color: #6b7280; font-size: 0.875rem; line-height: 1.25;">
+              <p>Loading application components</p>
+              <p>Initializing AI modules</p>
+              <p>Setting up canvas tools</p>
+            </div>
+          </div>
+        `;
+
+        // Error HTML template
+        const errorHTML = `
+          <div class="loading-fallback">
+            <div class="error-message">
+              <h2 style="font-size: 1.25rem; font-weight: bold; color: #ef4444; margin-bottom: 1rem;">
+                Loading Failed
+              </h2>
+              <p style="color: #f3f4f6; margin-bottom: 1rem;">
+                The application failed to load. This could be due to network issues or browser compatibility problems.
+              </p>
+              <button class="retry-button" onclick="window.location.reload()">
+                Retry Loading
+              </button>
+            </div>
+          </div>
+        `;
+
+        root.innerHTML = loadingHTML;
+
+        // Set timeout for error handling (15 seconds)
+        setTimeout(() => {
+          if (!window.ReactAppLoaded) {
+            root.innerHTML = errorHTML;
+          }
+        }, 15000);
       });
     </script>
   </body>

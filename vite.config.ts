@@ -36,7 +36,7 @@ export default defineConfig(({ mode }) => {
       outDir: "dist",
       emptyOutDir: true,
       sourcemap: mode === "development",
-      assetsDir: __dirname + "/assets",
+      assetsDir: `${__dirname}/assets`,
       minify: mode === "production" ? "esbuild" : false,
       rollupOptions: {
         output: {

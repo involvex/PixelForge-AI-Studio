@@ -10,15 +10,15 @@ import {
   Unlock,
 } from "lucide-react";
 import React, { useState } from "react";
-import { Layer } from "../types";
+import type { Layer as LayerType } from "../types";
 
 interface LayerPanelProps {
-  layers: Layer[];
+  layers: LayerType[];
   activeLayerId: string;
   onAddLayer: () => void;
   onRemoveLayer: (id: string) => void;
   onSelectLayer: (id: string) => void;
-  onUpdateLayer: (id: string, updates: Partial<Layer>) => void;
+  onUpdateLayer: (id: string, updates: Partial<LayerType>) => void;
   onMoveLayer: (fromIndex: number, toIndex: number) => void;
   onMergeLayer: (id: string) => void;
 }
@@ -37,10 +37,18 @@ const LayerPanel: React.FC<LayerPanelProps> = ({
   const [editName, setEditName] = useState("");
   const [dragOverIndex, setDragOverIndex] = useState<number | null>(null);
 
-  const startEditing = (layer: Layer) => {
+  const startEditing = (layer: LayerType) => {
     setEditingId(layer.id);
     setEditName(layer.name);
   };
+
+  const inputRef = React.useRef<HTMLInputElement>(null);
+
+  React.useEffect(() => {
+    if (editingId && inputRef.current) {
+      inputRef.current.focus();
+    }
+  }, [editingId]);
 
   const saveName = () => {
     if (editingId && editName.trim()) {
@@ -90,6 +98,7 @@ const LayerPanel: React.FC<LayerPanelProps> = ({
       <div className="p-3 border-b border-gray-750 flex items-center justify-between bg-gray-850">
         <h3 className="text-sm font-bold text-gray-200">Layers</h3>
         <button
+          type="button"
           onClick={onAddLayer}
           className="p-1.5 bg-indigo-600 hover:bg-indigo-500 rounded text-white transition-colors"
           title="Add Layer"
@@ -101,18 +110,25 @@ const LayerPanel: React.FC<LayerPanelProps> = ({
       <div className="flex-1 overflow-y-auto scrollbar-thin p-2 space-y-1">
         {reversedLayers.map((layer, index) => (
           <div
+            role="application"
+            onClick={() => onSelectLayer(layer.id)}
+            onKeyDown={e => {
+              if (e.key === "Enter" || e.key === " ") {
+                e.preventDefault();
+                onSelectLayer(layer.id);
+              }
+            }}
             key={layer.id}
+            className={`
+              relative flex flex-col p-2 rounded border transition-all
+              ${activeLayerId === layer.id ? "bg-indigo-900/40 border-indigo-500/50" : "bg-gray-800 hover:bg-gray-750"}
+              ${dragOverIndex === index ? "border-t-2 border-t-indigo-400" : ""}
+            `}
             draggable
             onDragStart={e => handleDragStart(e, index)}
             onDragOver={e => handleDragOver(e, index)}
             onDrop={e => handleDrop(e, index)}
             onDragLeave={() => setDragOverIndex(null)}
-            onClick={() => onSelectLayer(layer.id)}
-            className={`
-              relative flex flex-col p-2 rounded cursor-pointer transition-all border border-transparent
-              ${activeLayerId === layer.id ? "bg-indigo-900/40 border-indigo-500/50" : "bg-gray-800 hover:bg-gray-750"}
-              ${dragOverIndex === index ? "border-t-2 border-t-indigo-400" : ""}
-            `}
           >
             {/* Header Row */}
             <div className="flex items-center gap-2">
@@ -121,6 +137,7 @@ const LayerPanel: React.FC<LayerPanelProps> = ({
               </div>
 
               <button
+                type="button"
                 onClick={e => {
                   e.stopPropagation();
                   onUpdateLayer(layer.id, { visible: !layer.visible });
@@ -131,6 +148,7 @@ const LayerPanel: React.FC<LayerPanelProps> = ({
               </button>
 
               <button
+                type="button"
                 onClick={e => {
                   e.stopPropagation();
                   onUpdateLayer(layer.id, { locked: !layer.locked });
@@ -142,28 +160,34 @@ const LayerPanel: React.FC<LayerPanelProps> = ({
 
               {editingId === layer.id ? (
                 <input
+                  id={`layer-rename-${layer.id}`}
+                  name="layerName"
+                  ref={inputRef}
                   type="text"
                   value={editName}
                   onChange={e => setEditName(e.target.value)}
                   onBlur={saveName}
                   onKeyDown={e => e.key === "Enter" && saveName()}
-                  autoFocus
                   className="flex-1 bg-gray-950 border border-indigo-500 rounded px-1 py-0.5 text-xs text-white outline-none"
                   onClick={e => e.stopPropagation()}
+                  aria-label="Rename Layer"
                 />
               ) : (
-                <span
-                  className="flex-1 text-sm truncate font-medium select-none"
+                <button
+                  type="button"
+                  onClick={() => onSelectLayer(layer.id)}
                   onDoubleClick={() => startEditing(layer)}
+                  className="flex-1 text-left text-sm truncate font-medium select-none hover:text-white transition-colors"
                 >
                   {layer.name}
-                </span>
+                </button>
               )}
 
               <div
                 className={`flex items-center gap-1 ${activeLayerId === layer.id ? "opacity-100" : "opacity-0 hover:opacity-100"}`}
               >
                 <button
+                  type="button"
                   onClick={e => {
                     e.stopPropagation();
                     startEditing(layer);
@@ -174,6 +198,7 @@ const LayerPanel: React.FC<LayerPanelProps> = ({
                   <Edit2 size={12} />
                 </button>
                 <button
+                  type="button"
                   onClick={e => {
                     e.stopPropagation();
                     onMergeLayer(layer.id);
@@ -185,6 +210,7 @@ const LayerPanel: React.FC<LayerPanelProps> = ({
                   <ArrowDownToLine size={12} />
                 </button>
                 <button
+                  type="button"
                   onClick={e => {
                     e.stopPropagation();
                     onRemoveLayer(layer.id);
@@ -204,6 +230,8 @@ const LayerPanel: React.FC<LayerPanelProps> = ({
                 {Math.round(layer.opacity * 100)}%
               </span>
               <input
+                id={`layer-opacity-${layer.id}`}
+                name="layerOpacity"
                 type="range"
                 min="0"
                 max="1"
@@ -216,6 +244,7 @@ const LayerPanel: React.FC<LayerPanelProps> = ({
                 }
                 onClick={e => e.stopPropagation()}
                 className="flex-1 h-1 bg-gray-700 rounded-lg appearance-none cursor-pointer hover:bg-indigo-900"
+                aria-label="Layer Opacity"
               />
             </div>
           </div>

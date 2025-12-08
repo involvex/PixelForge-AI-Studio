@@ -1,4 +1,5 @@
-import React, { useState } from "react";
+import type React from "react";
+import { useState } from "react";
 import FileMenu from "./menubar/FileMenu";
 import EditMenu from "./menubar/EditMenu";
 import ViewMenu from "./menubar/ViewMenu";
@@ -29,6 +30,7 @@ interface MenuBarProps {
   }>;
   onTogglePanel?: (panelId: string) => void;
   onResetLayout?: () => void;
+  onCreateTemplate: () => void;
 }
 
 const MenuBar: React.FC<MenuBarProps> = ({
@@ -52,6 +54,7 @@ const MenuBar: React.FC<MenuBarProps> = ({
   panels,
   onTogglePanel,
   onResetLayout,
+  onCreateTemplate,
 }) => {
   const [activeMenu, setActiveMenu] = useState<string | null>(null);
 
@@ -77,6 +80,7 @@ const MenuBar: React.FC<MenuBarProps> = ({
           onOpen={onOpen}
           onSave={onSave}
           onExport={onExport}
+          onCreateTemplate={onCreateTemplate}
         />
         <EditMenu
           isOpen={activeMenu === "edit"}

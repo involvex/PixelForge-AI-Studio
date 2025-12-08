@@ -23,8 +23,6 @@ import EditorCanvas from "./components/EditorCanvas";
 import ExportModal from "./components/ExportModal";
 import Header from "./components/layout/Header";
 import Sidebar from "./components/layout/Sidebar";
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
-import LayerPanel from "./components/LayerPanel";
 import MenuBar from "./components/MenuBar";
 import StatusBar from "./components/StatusBar";
 import ContextMenu from "./components/ContextMenu";
@@ -43,6 +41,7 @@ import {
   togglePanel,
   type LayoutState,
 } from "./systems/layoutManager";
+import { type TransformOptions, transformLayer } from "./systems/transform";
 import { applyTheme, defaultTheme, themes } from "./utils/themeUtils";
 import Toolbar from "./components/Toolbar";
 import {
@@ -62,8 +61,10 @@ import {
 } from "./utils/drawingUtils";
 import {
   createProjectFromTemplate,
+  createTemplate,
   type ProjectTemplate,
 } from "./templates/templateManager";
+import CreateTemplateModal from "./components/CreateTemplateModal";
 import {
   createGif,
   createSpriteSheet,
@@ -165,6 +166,7 @@ function App() {
   >("general");
   const [showNewProjectModal, setShowNewProjectModal] = useState(false);
   const [showTransformModal, setShowTransformModal] = useState(false);
+  const [showCreateTemplateModal, setShowCreateTemplateModal] = useState(false);
 
   // --- Panels ---
   const [activeRightTab, setActiveRightTab] = useState<
@@ -468,6 +470,25 @@ function App() {
     }
   };
 
+  const handleSaveTemplate = (name: string, description: string) => {
+    try {
+      createTemplate({
+        id: `tpl-${Date.now()}`,
+        name,
+        comment: description,
+        width,
+        height,
+        fps,
+        layers: layers.map(l => ({ ...l })), // Deep copy layers/frames if needed for safety
+        frames: JSON.parse(JSON.stringify(frames)), // Deep copy frames to avoid ref issues
+        fillWith: "Transparency", // Default for now
+      });
+      alert(`Template "${name}" saved successfully!`);
+    } catch (e) {
+      alert(e instanceof Error ? e.message : "Failed to save template");
+    }
+  };
+
   const handleToggleTheme = () => {
     const nextTheme = currentThemeId === "light" ? "default" : "light";
     setCurrentThemeId(nextTheme);
@@ -523,6 +544,19 @@ function App() {
     if (!currentPixels) return;
     const newPixels = replaceColor(currentPixels, primaryColor, secondaryColor);
     updateActiveLayerPixels(activeLayerId, newPixels);
+  };
+
+  const handleApplyTransform = (options: TransformOptions) => {
+    recordHistory();
+    const currentFrame = frames[currentFrameIndex];
+    const currentLayerGrid = currentFrame.layers[activeLayerId];
+    const layerObj = layers.find(l => l.id === activeLayerId);
+
+    if (currentLayerGrid && layerObj) {
+      const newGrid = transformLayer(currentLayerGrid, options, width, height);
+      updateActiveLayerPixels(activeLayerId, newGrid);
+    }
+    setShowTransformModal(false);
   };
 
   // --- Palette Management ---
@@ -1045,6 +1079,8 @@ function App() {
 
   return (
     <div
+      role="application"
+      aria-label="PixelForge AI Studio"
       className="flex flex-col h-screen bg-gray-950 text-white font-sans"
       onDragOver={e => e.preventDefault()}
       onDrop={e => {
@@ -1101,6 +1137,7 @@ function App() {
           setSettingsTab("general");
           setIsSettingsOpen(true);
         }}
+        onCreateTemplate={() => setShowCreateTemplateModal(true)}
         onZoomIn={() => onZoomChange(z => Math.min(64, z + 1))}
         onZoomOut={() => onZoomChange(z => Math.max(1, z - 1))}
         onFitScreen={() => {
@@ -1122,31 +1159,29 @@ function App() {
       />
       <Header
         left={
-          <>
-            <div className="flex items-center gap-2">
-              <div className="w-8 h-8 flex items-center justify-center font-bold text-sm ">
-                <button
-                  type="button"
-                  onClick={() => {
-                    setSettingsTab("about");
-                    setIsSettingsOpen(true);
-                  }}
-                  className="w-full h-full flex items-center justify-center cursor-pointer transition-colors"
-                >
-                  <img
-                    src={"favicon.png"}
-                    alt="Logo"
-                    title="PixelForge"
-                    aria-label="PixelForge"
-                    className="w-full h-full object-contain border border-gray-800 shadow-lg hover:bg-indigo-600 hover:text-white transition-colors hover:border-indigo-600"
-                  />
-                </button>
-              </div>
-              <span className="font-bold text-gray-100 hidden sm:block">
-                PixelForge
-              </span>
+          <div className="flex items-center gap-2">
+            <div className="w-8 h-8 flex items-center justify-center font-bold text-sm ">
+              <button
+                type="button"
+                onClick={() => {
+                  setSettingsTab("about");
+                  setIsSettingsOpen(true);
+                }}
+                className="w-full h-full flex items-center justify-center cursor-pointer transition-colors"
+              >
+                <img
+                  src={"favicon.png"}
+                  alt="Logo"
+                  title="PixelForge"
+                  aria-label="PixelForge"
+                  className="w-full h-full object-contain border border-gray-800 shadow-lg hover:bg-indigo-600 hover:text-white transition-colors hover:border-indigo-600"
+                />
+              </button>
             </div>
-          </>
+            <span className="font-bold text-gray-100 hidden sm:block">
+              PixelForge
+            </span>
+          </div>
         }
         center={
           <>
@@ -1555,7 +1590,25 @@ function App() {
                           fps,
                           setFps,
                         }
-                      : {},
+                      : panel.id === "adjustments"
+                        ? {
+                            onApply: (b: number, c: number, g: number) => {
+                              console.log("Adjustments applied:", b, c, g);
+                              // TODO: Implement actual image adjustment logic here
+                              setShowAdjustments(false);
+                            },
+                            onClose: () => setShowAdjustments(false),
+                          }
+                        : panel.id === "settings"
+                          ? {
+                              gridVisible,
+                              setGridVisible,
+                              gridSize,
+                              setGridSize,
+                              gridColor,
+                              setGridColor,
+                            }
+                          : {},
           }))}
           onTogglePanel={handleTogglePanel}
         />
@@ -1618,10 +1671,13 @@ function App() {
       <TransformationModal
         isOpen={showTransformModal}
         onClose={() => setShowTransformModal(false)}
-        onApply={opts => {
-          console.log("Applying transform:", opts);
-          // TODO: Call systems/transform.ts here
-        }}
+        onApply={handleApplyTransform}
+      />
+
+      <CreateTemplateModal
+        isOpen={showCreateTemplateModal}
+        onClose={() => setShowCreateTemplateModal(false)}
+        onSave={handleSaveTemplate}
       />
 
       {showAdjustments && (

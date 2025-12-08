@@ -1,5 +1,6 @@
 import { Sliders } from "lucide-react";
-import React, { useState } from "react";
+import type React from "react";
+import { useState } from "react";
 
 interface AdjustmentsPanelProps {
   onApply: (brightness: number, contrast: number, gamma: number) => void;
@@ -21,6 +22,7 @@ const AdjustmentsPanel: React.FC<AdjustmentsPanelProps> = ({
           <Sliders size={16} /> Adjustments
         </h3>
         <button
+          type="button"
           onClick={onClose}
           className="text-xs text-gray-400 hover:text-white"
         >
@@ -31,10 +33,11 @@ const AdjustmentsPanel: React.FC<AdjustmentsPanelProps> = ({
       <div className="space-y-4">
         <div>
           <div className="flex justify-between text-xs text-gray-400 mb-1">
-            <span>Brightness</span>
+            <label htmlFor="adjust-brightness">Brightness</label>
             <span>{brightness}</span>
           </div>
           <input
+            id="adjust-brightness"
             type="range"
             min="-100"
             max="100"
@@ -46,10 +49,11 @@ const AdjustmentsPanel: React.FC<AdjustmentsPanelProps> = ({
 
         <div>
           <div className="flex justify-between text-xs text-gray-400 mb-1">
-            <span>Contrast</span>
+            <label htmlFor="adjust-contrast">Contrast</label>
             <span>{contrast}</span>
           </div>
           <input
+            id="adjust-contrast"
             type="range"
             min="-100"
             max="100"
@@ -61,10 +65,11 @@ const AdjustmentsPanel: React.FC<AdjustmentsPanelProps> = ({
 
         <div>
           <div className="flex justify-between text-xs text-gray-400 mb-1">
-            <span>Gamma</span>
+            <label htmlFor="adjust-gamma">Gamma</label>
             <span>{gamma}</span>
           </div>
           <input
+            id="adjust-gamma"
             type="range"
             min="0.1"
             max="3.0"
@@ -76,6 +81,7 @@ const AdjustmentsPanel: React.FC<AdjustmentsPanelProps> = ({
         </div>
 
         <button
+          type="button"
           onClick={() => onApply(brightness, contrast, gamma)}
           className="w-full py-2 bg-indigo-600 hover:bg-indigo-500 text-white rounded text-sm font-medium transition-colors"
         >

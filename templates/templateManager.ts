@@ -74,8 +74,28 @@ export const builtInTemplates: ProjectTemplate[] = [
   },
 ];
 
-// In-memory store for custom templates (would eventually be fs/localStorage)
-const customTemplates: ProjectTemplate[] = [];
+const STORAGE_KEY = "pf_custom_templates";
+
+// In-memory store for custom templates (backed by localStorage)
+const loadCustomTemplates = (): ProjectTemplate[] => {
+  try {
+    const saved = localStorage.getItem(STORAGE_KEY);
+    return saved ? JSON.parse(saved) : [];
+  } catch (e) {
+    console.error("Failed to load custom templates", e);
+    return [];
+  }
+};
+
+const customTemplates: ProjectTemplate[] = loadCustomTemplates();
+
+const saveCustomTemplates = () => {
+  try {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(customTemplates));
+  } catch (e) {
+    console.error("Failed to save custom templates", e);
+  }
+};
 
 export const createTemplate = (template: ProjectTemplate): void => {
   if (
@@ -85,6 +105,7 @@ export const createTemplate = (template: ProjectTemplate): void => {
     throw new Error(`Template with ID ${template.id} already exists.`);
   }
   customTemplates.push(template);
+  saveCustomTemplates();
 };
 
 export const loadTemplate = (id: string): ProjectTemplate | undefined => {
@@ -101,6 +122,7 @@ export const editTemplate = (
       ...customTemplates[customIndex],
       ...updates,
     };
+    saveCustomTemplates();
     return;
   }
   throw new Error("Cannot edit built-in templates or template not found.");

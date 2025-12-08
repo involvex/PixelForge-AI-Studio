@@ -1,15 +1,16 @@
-import type { PanelConfig } from "../systems/layoutManager";
-import AIPanel from "../components/AIPanel";
 import AdjustmentsPanel from "../components/AdjustmentsPanel";
+import AIPanel from "../components/AIPanel";
 import AnimationPanel from "../components/AnimationPanel";
 import LayerPanel from "../components/LayerPanel";
 import PalettePanel from "../components/PalettePanel";
 import SettingsPanel from "../components/SettingsPanel";
+import type { PanelConfig } from "../systems/layoutManager";
 
 /**
  * Central registry of all available panels in the application
  */
-export const PANEL_REGISTRY: PanelConfig[] = [
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+export const PANEL_REGISTRY: PanelConfig<any>[] = [
   {
     id: "layers",
     title: "Layers",
@@ -75,7 +76,8 @@ export const PANEL_REGISTRY: PanelConfig[] = [
 /**
  * Get a panel configuration by ID
  */
-export function getPanelConfig(panelId: string): PanelConfig | undefined {
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+export function getPanelConfig(panelId: string): PanelConfig<any> | undefined {
   return PANEL_REGISTRY.find(p => p.id === panelId);
 }
 

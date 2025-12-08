@@ -24,6 +24,15 @@ export interface PluginInstance {
   isActive: boolean;
 }
 
+/**
+ * Storage format for plugin data with versioning
+ */
+interface PluginStorageData {
+  metadata: PluginMetadata;
+  code: string;
+  version: string; // Storage format version for migration
+}
+
 class PluginManager {
   private api: PluginAPI;
 
@@ -35,9 +44,8 @@ class PluginManager {
     this.loadPlugins();
   }
 
-  private savePlugins() {
-    // Optimization: We store the code directly in the plugin instance now.
-    // No need to serialize from onLoad.toString() anymore.
+  private savePlugins(): void {
+    this.saveToStorage();
   }
 
   // Refactoring to store code string
@@ -57,7 +65,7 @@ class PluginManager {
       };
 
       this.plugins.set(metadata.id, instance);
-      this.saveToStorage();
+      this.savePlugins();
       console.log(`Plugin ${metadata.name} registered.`);
     } catch (e) {
       console.error(`Failed to register plugin ${metadata.name}:`, e);
@@ -65,15 +73,83 @@ class PluginManager {
     }
   }
 
-  private saveToStorage() {
+  /**
+   * Validates plugin data before storage
+   * @param plugin The plugin instance to validate
+   * @returns true if valid, false otherwise
+   */
+  private validatePluginData(
+    plugin: PluginInstance & { code?: string },
+  ): boolean {
+    if (!plugin.metadata?.id) {
+      console.error("Plugin missing required id field");
+      return false;
+    }
+    if (!plugin.code) {
+      console.error(`Plugin ${plugin.metadata.id} has no code to persist`);
+      return false;
+    }
+    return true;
+  }
+
+  /**
+   * Serializes plugin data to storage format
+   * @param plugin The plugin instance to serialize
+   * @returns Serialized plugin data ready for storage
+   */
+  private serializePlugin(
+    plugin: PluginInstance & { code?: string },
+  ): PluginStorageData {
+    if (!plugin.code) {
+      throw new Error(`Plugin ${plugin.metadata.id} has no code to serialize`);
+    }
+    return {
+      metadata: plugin.metadata,
+      code: plugin.code,
+      version: "1.0", // Storage format version
+    };
+  }
+
+  /**
+   * Saves all plugins to localStorage with improved error handling and validation
+   * @throws Error if storage operation fails critically
+   */
+  private saveToStorage(): void {
     try {
-      const data = Array.from(this.plugins.values()).map(p => ({
-        metadata: p.metadata,
-        code: p.code,
-      }));
-      localStorage.setItem("pixelforge_plugins", JSON.stringify(data));
+      // Early exit if no plugins to save
+      if (this.plugins.size === 0) {
+        localStorage.removeItem("pixelforge_plugins");
+        return;
+      }
+
+      // Filter and validate plugins before serialization
+      const validPlugins = Array.from(this.plugins.values())
+        .filter(p => this.validatePluginData(p))
+        .map(p => this.serializePlugin(p));
+
+      // Skip if no valid plugins
+      if (validPlugins.length === 0) {
+        console.warn("No valid plugins to save");
+        return;
+      }
+
+      // Check storage quota before saving (5MB limit)
+      const serializedData = JSON.stringify(validPlugins);
+      if (serializedData.length > 5 * 1024 * 1024) {
+        console.error("Plugin data exceeds storage quota");
+        return;
+      }
+
+      localStorage.setItem("pixelforge_plugins", serializedData);
+      console.debug(
+        `Successfully saved ${validPlugins.length} plugins to storage`,
+      );
     } catch (e) {
-      console.error("Failed to save plugins", e);
+      console.error("Failed to save plugins to storage", e);
+      // Re-throw with more context for critical failure handling
+      throw new Error(
+        `Plugin storage failed: ${e instanceof Error ? e.message : String(e)}`,
+      );
     }
   }
 
