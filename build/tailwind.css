@@ -1,0 +1,7 @@
+/* Tailwind CSS base styles - processed by PostCSS */
+/* biome-ignore css/unknown-at-rule: Tailwind directives are processed by PostCSS */
+@tailwind base;
+/* biome-ignore css/unknown-at-rule: Tailwind directives are processed by PostCSS */
+@tailwind components;
+/* biome-ignore css/unknown-at-rule: Tailwind directives are processed by PostCSS */
+@tailwind utilities;

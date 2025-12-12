@@ -1,10 +1,10 @@
-import AdjustmentsPanel from "../components/AdjustmentsPanel";
-import AIPanel from "../components/AIPanel";
-import AnimationPanel from "../components/AnimationPanel";
-import LayerPanel from "../components/LayerPanel";
-import PalettePanel from "../components/PalettePanel";
-import SettingsPanel from "../components/SettingsPanel";
-import type { PanelConfig } from "../systems/layoutManager";
+import AdjustmentsPanel from "../components/AdjustmentsPanel.tsx";
+import AIPanel from "../components/AIPanel.tsx";
+import AnimationPanel from "../components/AnimationPanel.tsx";
+import LayerPanel from "../components/LayerPanel.tsx";
+import PalettePanel from "../components/PalettePanel.tsx";
+import SettingsPanel from "../components/SettingsPanel.tsx";
+import type { PanelConfig } from "../systems/layoutManager.ts";
 
 /**
  * Central registry of all available panels in the application

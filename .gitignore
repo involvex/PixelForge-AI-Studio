@@ -42,3 +42,6 @@ __pycache__
 /blob-report/
 /playwright/.cache/
 /playwright/.auth/
+
+release
+icons

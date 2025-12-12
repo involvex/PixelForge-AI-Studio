@@ -1,7 +1,7 @@
 import type React from "react";
 import { useEffect, useState } from "react";
-import ErrorBoundary from "./ErrorBoundary";
-import LoadingFallback from "./LoadingFallback";
+import ErrorBoundary from "./ErrorBoundary.tsx";
+import LoadingFallback from "./LoadingFallback.tsx";
 
 interface AppWindow extends Window {
   ReactAppLoaded?: boolean;

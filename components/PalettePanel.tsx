@@ -1,7 +1,7 @@
 import { Palette as PaletteIcon, Plus, Trash2 } from "lucide-react";
 import type React from "react";
 import { useState } from "react";
-import type { Palette as PaletteType } from "../types";
+import type { Palette as PaletteType } from "../types.ts";
 
 interface PalettePanelProps {
   palettes: PaletteType[];

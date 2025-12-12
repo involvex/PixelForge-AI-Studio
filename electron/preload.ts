@@ -1,5 +1,6 @@
 // import "ts-node/register";
 import electron from "electron";
+
 interface AppSettings {
   geminiApiKey: string;
   minimizeToTray: boolean;

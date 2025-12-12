@@ -1,8 +1,8 @@
 import type React from "react";
 import { useState } from "react";
-import EditMenu from "./menubar/EditMenu";
-import FileMenu from "./menubar/FileMenu";
-import ViewMenu from "./menubar/ViewMenu";
+import EditMenu from "./menubar/EditMenu.tsx";
+import FileMenu from "./menubar/FileMenu.tsx";
+import ViewMenu from "./menubar/ViewMenu.tsx";
 
 interface MenuBarProps {
   onNew: () => void;
@@ -34,6 +34,8 @@ interface MenuBarProps {
   onTogglePanel?: (panelId: string) => void;
   onResetLayout?: () => void;
   onCreateTemplate: () => void;
+  onCopyImageLocation: () => void;
+  onOpenFile: () => void;
 }
 
 const MenuBar: React.FC<MenuBarProps> = ({
@@ -61,6 +63,8 @@ const MenuBar: React.FC<MenuBarProps> = ({
   onTogglePanel,
   onResetLayout,
   onCreateTemplate,
+  onCopyImageLocation,
+  onOpenFile,
 }) => {
   const [activeMenu, setActiveMenu] = useState<string | null>(null);
 
@@ -74,8 +78,11 @@ const MenuBar: React.FC<MenuBarProps> = ({
 
   return (
     <div className="w-full h-8 bg-slate-900 border-b border-slate-700 flex items-center px-2 select-none z-50">
-      <div className="mr-4 font-bold text-slate-400 text-xs tracking-wider">
-        PIXELFORGE
+      <div className="mr-4 flex items-center gap-2">
+        <img src="logo.png" alt="PixelForge" className="w-6 h-6" />
+        <span className="font-bold text-slate-400 text-xs tracking-wider hidden sm:inline">
+          PIXELFORGE
+        </span>
       </div>
       <div className="flex space-x-1">
         <FileMenu
@@ -90,6 +97,8 @@ const MenuBar: React.FC<MenuBarProps> = ({
           onRevert={onRevert}
           onExport={onExport}
           onCreateTemplate={onCreateTemplate}
+          onCopyImageLocation={onCopyImageLocation}
+          onOpenFile={onOpenFile}
         />
         <EditMenu
           isOpen={activeMenu === "edit"}

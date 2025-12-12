@@ -1,5 +1,5 @@
 import type React from "react";
-import type { Coordinates } from "../types";
+import type { Coordinates } from "../types.ts";
 
 export const getCoordinates = (
   e: React.MouseEvent | React.TouchEvent,

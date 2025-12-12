@@ -1,6 +1,6 @@
 import isElectron from "is-electron";
 import type React from "react";
-import MenuDropdown, { MenuItem, MenuSeparator } from "./MenuDropdown";
+import MenuDropdown, { MenuItem, MenuSeparator } from "./MenuDropdown.tsx";
 
 interface FileMenuProps {
   isOpen: boolean;
@@ -14,6 +14,8 @@ interface FileMenuProps {
   onRevert?: () => void;
   onExport: () => void;
   onCreateTemplate: () => void;
+  onCopyImageLocation: () => void;
+  onOpenFile: () => void;
 }
 
 const FileMenu: React.FC<FileMenuProps> = ({
@@ -28,6 +30,8 @@ const FileMenu: React.FC<FileMenuProps> = ({
   onRevert,
   onExport,
   onCreateTemplate,
+  onCopyImageLocation,
+  onOpenFile,
 }) => {
   const handleNotImplemented = (feature: string) => {
     alert(`${feature} is coming soon!`);
@@ -57,6 +61,13 @@ const FileMenu: React.FC<FileMenuProps> = ({
           onClose();
         }}
         shortcut="Ctrl+O"
+      />
+      <MenuItem
+        label="Open File..."
+        onClick={() => {
+          onOpenFile();
+          onClose();
+        }}
       />
       <MenuItem
         label="Open as Layers..."
@@ -99,7 +110,11 @@ const FileMenu: React.FC<FileMenuProps> = ({
       />
       <MenuItem
         label="Save Copy..."
-        onClick={() => handleNotImplemented("Save Copy")}
+        onClick={() => {
+          if (onSaveAs) onSaveAs();
+          else onSave();
+          onClose();
+        }}
       />
       <MenuItem
         label="Revert"
@@ -123,7 +138,10 @@ const FileMenu: React.FC<FileMenuProps> = ({
       />
       <MenuItem
         label="Export As..."
-        onClick={() => handleNotImplemented("Export As")}
+        onClick={() => {
+          onExport();
+          onClose();
+        }}
       />
 
       <MenuSeparator />
@@ -142,7 +160,10 @@ const FileMenu: React.FC<FileMenuProps> = ({
       {/* 5. Copy Image Location */}
       <MenuItem
         label="Copy Image Location"
-        onClick={() => handleNotImplemented("Copy Image Location")}
+        onClick={() => {
+          onCopyImageLocation();
+          onClose();
+        }}
       />
 
       <MenuSeparator />

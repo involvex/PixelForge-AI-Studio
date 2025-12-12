@@ -1,6 +1,6 @@
 import type React from "react";
 import { useCallback, useEffect, useRef, useState } from "react";
-import { SelectMode, ToolType, type Coordinates, type Layer } from "../types";
+import { type Coordinates, type Layer, SelectMode, ToolType } from "../types";
 import {
   drawOnMask,
   extractSelectedPixels,
@@ -123,40 +123,8 @@ const EditorCanvas: React.FC<EditorCanvasProps> = ({
     setSelectionEnd(null);
   }, []);
 
-  // Zoom Interaction (Ctrl + Wheel)
-  useEffect(() => {
-    const canvas = canvasRef.current;
-    if (!canvas) return;
-
-    const handleWheel = (e: WheelEvent) => {
-      if (e.ctrlKey) {
-        e.preventDefault();
-        const direction = -Math.sign(e.deltaY);
-        // Simple 10% increment or specific steps? App.tsx uses discrete integers usually?
-        // App.tsx uses: setZoom(z => Math.max(1, Math.min(64, z + delta)))
-        // Let's just pass the raw "next step" logic or let App handle it?
-        // Props says: onZoomChange(newZoom: number).
-        // Let's define steps or just increment.
-        const currentZoom = zoom;
-        let newZoom = currentZoom + direction;
-        if (currentZoom >= 16) newZoom = currentZoom + direction * 2;
-        if (currentZoom >= 32) newZoom = currentZoom + direction * 4;
-
-        // Clamp handled by App or here? Best here to send valid value.
-        newZoom = Math.max(1, Math.min(64, newZoom));
-
-        if (newZoom !== currentZoom) {
-          onZoomChange(newZoom);
-        }
-      }
-    };
-
-    canvas.addEventListener("wheel", handleWheel, { passive: false });
-
-    return () => {
-      canvas.removeEventListener("wheel", handleWheel);
-    };
-  }, [onZoomChange, zoom]);
+  // Zoom Interaction (Ctrl + Wheel) - REMOVED: Canvas wheel handler to prevent interference with container handler
+  // The container (div) will handle wheel events for zoom functionality
 
   // Initialize Transform when tool is selected
   useEffect(() => {
@@ -1188,30 +1156,78 @@ const EditorCanvas: React.FC<EditorCanvasProps> = ({
     }
   };
 
-  return (
-    <canvas
-      ref={canvasRef}
-      width={width * zoom}
-      height={height * zoom}
-      className={`bg-transparent touch-none ${selectedTool === ToolType.TRANSFORM || selectedTool === ToolType.MOVE ? "cursor-default" : "cursor-crosshair"}`}
-      onMouseDown={handlePointerDown}
-      onMouseMove={handlePointerMove}
-      onMouseUp={handlePointerUp}
-      onMouseLeave={() => {
-        if (onCursorMove) onCursorMove(null, null);
-        if (
-          selectedTool !== ToolType.MOVE &&
-          selectedTool !== ToolType.TRANSFORM
-        ) {
-          setIsDrawing(false);
+  // Container ref for wheel event handling
+  const containerRef = useRef<HTMLDivElement>(null);
+
+  // Add container wheel handler for zoom using ref
+  useEffect(() => {
+    const container = containerRef.current;
+    if (!container) return;
+
+    const handleWheel = (e: WheelEvent) => {
+      if (e.ctrlKey || e.metaKey) {
+        e.preventDefault();
+        e.stopPropagation();
+
+        const direction = e.deltaY < 0 ? 1 : -1;
+        const currentZoom = zoom;
+        let newZoom = currentZoom + direction * 0.1;
+
+        // Apply acceleration for higher zoom levels
+        if (currentZoom >= 16) newZoom = currentZoom + direction * 0.2;
+        if (currentZoom >= 32) newZoom = currentZoom + direction * 0.4;
+
+        // Apply bounds
+        newZoom = Math.max(0.1, Math.min(64, newZoom));
+
+        if (Math.abs(newZoom - currentZoom) > 0.01) {
+          console.log(
+            "[ZOOM WHEEL] Changing zoom from",
+            currentZoom,
+            "to",
+            newZoom,
+          );
+          onZoomChange(newZoom);
         }
-        setPreviewPixel(null);
-      }}
-      onTouchStart={handlePointerDown}
-      onTouchMove={handlePointerMove}
-      onTouchEnd={handlePointerUp}
-      onContextMenu={onContextMenu}
-    />
+      }
+    };
+
+    container.addEventListener("wheel", handleWheel, { passive: false });
+
+    return () => {
+      container.removeEventListener("wheel", handleWheel);
+    };
+  }, [zoom, onZoomChange]);
+
+  return (
+    <div
+      ref={containerRef}
+      className="w-full h-full overflow-auto flex items-center justify-center bg-gray-900 checkerboard editor-canvas-container"
+    >
+      <canvas
+        ref={canvasRef}
+        width={width * zoom}
+        height={height * zoom}
+        className={`bg-transparent touch-none ${selectedTool === ToolType.TRANSFORM || selectedTool === ToolType.MOVE ? "cursor-default" : "cursor-crosshair"}`}
+        onMouseDown={handlePointerDown}
+        onMouseMove={handlePointerMove}
+        onMouseUp={handlePointerUp}
+        onMouseLeave={() => {
+          if (onCursorMove) onCursorMove(null, null);
+          if (
+            selectedTool !== ToolType.MOVE &&
+            selectedTool !== ToolType.TRANSFORM
+          ) {
+            setIsDrawing(false);
+          }
+          setPreviewPixel(null);
+        }}
+        onTouchStart={handlePointerDown}
+        onTouchMove={handlePointerMove}
+        onTouchEnd={handlePointerUp}
+        onContextMenu={onContextMenu}
+      />
+    </div>
   );
 };
 

@@ -1,6 +1,6 @@
 import { Copy, Pause, Play, Plus, Trash2 } from "lucide-react";
 import React from "react";
-import type { Frame, Layer } from "../types";
+import type { Frame, Layer } from "../types.ts";
 
 interface AnimationPanelProps {
   frames: Frame[];

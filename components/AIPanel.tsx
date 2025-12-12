@@ -14,8 +14,8 @@ import {
   editAsset,
   generateAsset,
   searchInspiration,
-} from "../services/geminiService";
-import { type AIChatMessage, AspectRatio, ImageSize } from "../types";
+} from "../services/geminiService.ts";
+import { type AIChatMessage, AspectRatio, ImageSize } from "../types.ts";
 
 interface AIPanelProps {
   onApplyImage: (base64: string) => void;
@@ -275,7 +275,7 @@ const AIPanel: React.FC<AIPanelProps> = ({
   };
 
   return (
-    <div className="w-80 bg-gray-900 border-l border-gray-750 flex flex-col h-full">
+    <div className="w-full bg-gray-900 border-l border-gray-750 flex flex-col h-full">
       {/* Tabs */}
       <div className="flex border-b border-gray-750">
         <button
@@ -312,7 +312,7 @@ const AIPanel: React.FC<AIPanelProps> = ({
         </button>
       </div>
 
-      {/* Content Area */}
+      {/* Content Area - Consolidated Scrolling */}
       <div className="flex-1 overflow-y-auto p-4 space-y-4">
         {/* Output Log */}
         <div className="space-y-3 mb-4 min-h-[100px]">
@@ -368,247 +368,247 @@ const AIPanel: React.FC<AIPanelProps> = ({
             </div>
           )}
         </div>
-      </div>
 
-      {/* Controls */}
-      <div className="p-4 bg-gray-850 border-t border-gray-750 space-y-3">
-        {/* Generate Options */}
-        {activeTab === "generate" && (
-          <div className="space-y-3">
-            <div className="grid grid-cols-2 gap-2">
-              <label htmlFor="ai-aspect-ratio" className="sr-only">
-                Aspect Ratio
-              </label>
-              <select
-                id="ai-aspect-ratio"
-                title="Aspect Ratio"
-                value={aspectRatio}
-                onChange={e => setAspectRatio(e.target.value as AspectRatio)}
-                className="bg-gray-700 text-xs text-white p-2 rounded border border-gray-600 focus:border-indigo-500 outline-none"
-              >
-                <option value={AspectRatio.SQUARE_1_1}>1:1</option>
-                <option value={AspectRatio.PORTRAIT_9_16}>9:16</option>
-                <option value={AspectRatio.LANDSCAPE_16_9}>16:9</option>
-              </select>
-              <label htmlFor="ai-image-size" className="sr-only">
-                Image Size
-              </label>
-              <select
-                id="ai-image-size"
-                title="Image Size"
-                value={imageSize}
-                onChange={e => setImageSize(e.target.value as ImageSize)}
-                className="bg-gray-700 text-xs text-white p-2 rounded border border-gray-600 focus:border-indigo-500 outline-none"
-              >
-                <option value={ImageSize.SIZE_1K}>1K</option>
-                <option value={ImageSize.SIZE_2K}>2K</option>
-              </select>
-            </div>
+        {/* Controls inside scrollable area */}
+        <div className="space-y-3 pt-4 border-t border-gray-750">
+          {/* Generate Options */}
+          {activeTab === "generate" && (
+            <div className="space-y-3">
+              <div className="grid grid-cols-2 gap-2">
+                <label htmlFor="ai-aspect-ratio" className="sr-only">
+                  Aspect Ratio
+                </label>
+                <select
+                  id="ai-aspect-ratio"
+                  title="Aspect Ratio"
+                  value={aspectRatio}
+                  onChange={e => setAspectRatio(e.target.value as AspectRatio)}
+                  className="bg-gray-700 text-xs text-white p-2 rounded border border-gray-600 focus:border-indigo-500 outline-none"
+                >
+                  <option value={AspectRatio.SQUARE_1_1}>1:1</option>
+                  <option value={AspectRatio.PORTRAIT_9_16}>9:16</option>
+                  <option value={AspectRatio.LANDSCAPE_16_9}>16:9</option>
+                </select>
+                <label htmlFor="ai-image-size" className="sr-only">
+                  Image Size
+                </label>
+                <select
+                  id="ai-image-size"
+                  title="Image Size"
+                  value={imageSize}
+                  onChange={e => setImageSize(e.target.value as ImageSize)}
+                  className="bg-gray-700 text-xs text-white p-2 rounded border border-gray-600 focus:border-indigo-500 outline-none"
+                >
+                  <option value={ImageSize.SIZE_1K}>1K</option>
+                  <option value={ImageSize.SIZE_2K}>2K</option>
+                </select>
+              </div>
 
-            <div>
-              <label
-                htmlFor="style-select"
-                className="text-xs text-gray-400 block mb-1"
-              >
-                Style
-              </label>
-              <select
-                id="style-select"
-                title="Pixel Art Style"
-                value={selectedStyle}
-                onChange={e => setSelectedStyle(e.target.value)}
-                className="w-full bg-gray-700 text-xs text-white p-2 rounded border border-gray-600 focus:border-indigo-500 outline-none"
-              >
-                {PIXEL_STYLES.map(s => (
-                  <option key={s.id} value={s.id}>
-                    {s.label}
-                  </option>
-                ))}
-              </select>
-            </div>
-
-            <div className="flex gap-2">
-              <div className="flex-1">
+              <div>
                 <label
-                  htmlFor="seed-input"
+                  htmlFor="style-select"
                   className="text-xs text-gray-400 block mb-1"
                 >
-                  Seed (Optional)
+                  Style
                 </label>
-                <div className="flex gap-1">
-                  <input
-                    id="seed-input"
-                    type="number"
-                    value={seed}
-                    onChange={e => setSeed(e.target.value)}
-                    placeholder="Random"
-                    className="w-full bg-gray-700 text-xs text-white p-2 rounded border border-gray-600 focus:border-indigo-500 outline-none"
-                  />
-                  <button
-                    title="Randomize Seed"
-                    type="button"
-                    onClick={randomizeSeed}
-                    className="p-2 bg-gray-700 hover:bg-gray-600 rounded border border-gray-600 text-gray-400"
+                <select
+                  id="style-select"
+                  title="Pixel Art Style"
+                  value={selectedStyle}
+                  onChange={e => setSelectedStyle(e.target.value)}
+                  className="w-full bg-gray-700 text-xs text-white p-2 rounded border border-gray-600 focus:border-indigo-500 outline-none"
+                >
+                  {PIXEL_STYLES.map(s => (
+                    <option key={s.id} value={s.id}>
+                      {s.label}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              <div className="flex gap-2">
+                <div className="flex-1">
+                  <label
+                    htmlFor="seed-input"
+                    className="text-xs text-gray-400 block mb-1"
                   >
-                    <Dices size={14} />
-                  </button>
+                    Seed (Optional)
+                  </label>
+                  <div className="flex gap-1">
+                    <input
+                      id="seed-input"
+                      type="number"
+                      value={seed}
+                      onChange={e => setSeed(e.target.value)}
+                      placeholder="Random"
+                      className="w-full bg-gray-700 text-xs text-white p-2 rounded border border-gray-600 focus:border-indigo-500 outline-none"
+                    />
+                    <button
+                      title="Randomize Seed"
+                      type="button"
+                      onClick={randomizeSeed}
+                      className="p-2 bg-gray-700 hover:bg-gray-600 rounded border border-gray-600 text-gray-400"
+                    >
+                      <Dices size={14} />
+                    </button>
+                  </div>
                 </div>
               </div>
-            </div>
 
-            <div>
-              <label
-                htmlFor="negative-prompt-input"
-                className="text-xs text-gray-400 block mb-1"
-              >
-                Negative Prompt
-              </label>
-              <input
-                id="negative-prompt-input"
-                type="text"
-                value={negativePrompt}
-                onChange={e => setNegativePrompt(e.target.value)}
-                placeholder="blurred, low quality, messy"
-                className="w-full bg-gray-700 text-xs text-white p-2 rounded border border-gray-600 focus:border-indigo-500 outline-none"
-              />
-            </div>
-          </div>
-        )}
-
-        {/* Edit Options */}
-        {activeTab === "edit" && (
-          <div className="space-y-3">
-            <div className="flex bg-gray-700 rounded p-1">
-              <button
-                type="button"
-                onClick={() => setEditMode("free")}
-                className={`flex-1 text-xs py-1.5 rounded ${editMode === "free" ? "bg-gray-600 text-white" : "text-gray-400 hover:text-gray-300"}`}
-              >
-                Free
-              </button>
-              <button
-                type="button"
-                onClick={() => setEditMode("replace_obj")}
-                className={`flex-1 text-xs py-1.5 rounded ${editMode === "replace_obj" ? "bg-gray-600 text-white" : "text-gray-400 hover:text-gray-300"}`}
-              >
-                Object
-              </button>
-              <button
-                type="button"
-                onClick={() => setEditMode("replace_bg")}
-                className={`flex-1 text-xs py-1.5 rounded ${editMode === "replace_bg" ? "bg-gray-600 text-white" : "text-gray-400 hover:text-gray-300"}`}
-              >
-                Bg
-              </button>
-              <button
-                type="button"
-                onClick={() => setEditMode("transform")}
-                className={`flex-1 text-xs py-1.5 rounded ${editMode === "transform" ? "bg-gray-600 text-white" : "text-gray-400 hover:text-gray-300"}`}
-              >
-                Trans
-              </button>
-            </div>
-
-            {editMode === "replace_obj" && (
-              <div className="grid grid-cols-2 gap-2">
-                <label htmlFor="edit-target" className="sr-only">
-                  Target Object
-                </label>
-                <input
-                  id="edit-target"
-                  type="text"
-                  placeholder="Target (e.g. Cat)"
-                  value={editTarget}
-                  onChange={e => setEditTarget(e.target.value)}
-                  className="bg-gray-700 text-xs text-white p-2 rounded border border-gray-600 outline-none"
-                />
-                <label htmlFor="edit-replacement" className="sr-only">
-                  Replacement
-                </label>
-                <input
-                  id="edit-replacement"
-                  type="text"
-                  placeholder="Replace with (e.g. Dog)"
-                  value={editReplacement}
-                  onChange={e => setEditReplacement(e.target.value)}
-                  className="bg-gray-700 text-xs text-white p-2 rounded border border-gray-600 outline-none"
-                />
-              </div>
-            )}
-
-            {editMode === "transform" && (
               <div>
+                <label
+                  htmlFor="negative-prompt-input"
+                  className="text-xs text-gray-400 block mb-1"
+                >
+                  Negative Prompt
+                </label>
                 <input
-                  id="edit-transform-object"
+                  id="negative-prompt-input"
                   type="text"
-                  placeholder="Object to transform (e.g. The sword)"
-                  value={editTarget}
-                  onChange={e => setEditTarget(e.target.value)}
-                  className="w-full bg-gray-700 text-xs text-white p-2 rounded border border-gray-600 outline-none mb-1"
+                  value={negativePrompt}
+                  onChange={e => setNegativePrompt(e.target.value)}
+                  placeholder="blurred, low quality, messy"
+                  className="w-full bg-gray-700 text-xs text-white p-2 rounded border border-gray-600 focus:border-indigo-500 outline-none"
                 />
               </div>
-            )}
+            </div>
+          )}
 
+          {/* Edit Options */}
+          {activeTab === "edit" && (
+            <div className="space-y-3">
+              <div className="flex bg-gray-700 rounded p-1">
+                <button
+                  type="button"
+                  onClick={() => setEditMode("free")}
+                  className={`flex-1 text-xs py-1.5 rounded ${editMode === "free" ? "bg-gray-600 text-white" : "text-gray-400 hover:text-gray-300"}`}
+                >
+                  Free
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setEditMode("replace_obj")}
+                  className={`flex-1 text-xs py-1.5 rounded ${editMode === "replace_obj" ? "bg-gray-600 text-white" : "text-gray-400 hover:text-gray-300"}`}
+                >
+                  Object
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setEditMode("replace_bg")}
+                  className={`flex-1 text-xs py-1.5 rounded ${editMode === "replace_bg" ? "bg-gray-600 text-white" : "text-gray-400 hover:text-gray-300"}`}
+                >
+                  Bg
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setEditMode("transform")}
+                  className={`flex-1 text-xs py-1.5 rounded ${editMode === "transform" ? "bg-gray-600 text-white" : "text-gray-400 hover:text-gray-300"}`}
+                >
+                  Trans
+                </button>
+              </div>
+
+              {editMode === "replace_obj" && (
+                <div className="grid grid-cols-2 gap-2">
+                  <label htmlFor="edit-target" className="sr-only">
+                    Target Object
+                  </label>
+                  <input
+                    id="edit-target"
+                    type="text"
+                    placeholder="Target (e.g. Cat)"
+                    value={editTarget}
+                    onChange={e => setEditTarget(e.target.value)}
+                    className="bg-gray-700 text-xs text-white p-2 rounded border border-gray-600 outline-none"
+                  />
+                  <label htmlFor="edit-replacement" className="sr-only">
+                    Replacement
+                  </label>
+                  <input
+                    id="edit-replacement"
+                    type="text"
+                    placeholder="Replace with (e.g. Dog)"
+                    value={editReplacement}
+                    onChange={e => setEditReplacement(e.target.value)}
+                    className="bg-gray-700 text-xs text-white p-2 rounded border border-gray-600 outline-none"
+                  />
+                </div>
+              )}
+
+              {editMode === "transform" && (
+                <div>
+                  <input
+                    id="edit-transform-object"
+                    type="text"
+                    placeholder="Object to transform (e.g. The sword)"
+                    value={editTarget}
+                    onChange={e => setEditTarget(e.target.value)}
+                    className="w-full bg-gray-700 text-xs text-white p-2 rounded border border-gray-600 outline-none mb-1"
+                  />
+                </div>
+              )}
+
+              <button
+                type="button"
+                onClick={handleRemoveBackground}
+                disabled={loading}
+                className="w-full bg-gray-700 hover:bg-gray-600 text-white py-2 rounded text-xs flex items-center justify-center gap-2 border border-gray-600"
+              >
+                <Scissors size={14} /> Remove Background
+              </button>
+            </div>
+          )}
+
+          {/* Prompt Input */}
+          <div className="flex flex-col gap-2">
+            <label htmlFor="ai-prompt" className="sr-only">
+              AI Prompt
+            </label>
+            <textarea
+              id="ai-prompt"
+              value={prompt}
+              onChange={e => setPrompt(e.target.value)}
+              placeholder={
+                activeTab === "generate"
+                  ? "A cute 8-bit dragon..."
+                  : activeTab === "edit"
+                    ? editMode === "free"
+                      ? "Change color to blue..."
+                      : editMode === "replace_bg"
+                        ? "A spooky forest..."
+                        : editMode === "transform"
+                          ? "Make it glow..."
+                          : "Context for edit..."
+                    : activeTab === "search"
+                      ? "What do dungeon tiles look like?"
+                      : "Optional context for analysis..."
+              }
+              className="w-full bg-gray-700 text-white p-2 rounded border border-gray-600 focus:border-indigo-500 outline-none resize-none h-20 text-sm"
+            />
             <button
-              type="button"
-              onClick={handleRemoveBackground}
+              onClick={
+                activeTab === "generate"
+                  ? handleGenerate
+                  : activeTab === "edit"
+                    ? handleEdit
+                    : activeTab === "search"
+                      ? handleSearch
+                      : handleAnalyze
+              }
               disabled={loading}
-              className="w-full bg-gray-700 hover:bg-gray-600 text-white py-2 rounded text-xs flex items-center justify-center gap-2 border border-gray-600"
+              type="button"
+              className="w-full bg-indigo-600 hover:bg-indigo-500 text-white py-2 rounded font-medium text-sm flex items-center justify-center gap-2 disabled:opacity-50"
             >
-              <Scissors size={14} /> Remove Background
+              <Sparkles size={16} />
+              {activeTab === "generate"
+                ? "Generate Asset"
+                : activeTab === "edit"
+                  ? "Magic Edit"
+                  : activeTab === "search"
+                    ? "Search"
+                    : "Analyze"}
             </button>
           </div>
-        )}
-
-        {/* Prompt Input */}
-        <div className="flex flex-col gap-2">
-          <label htmlFor="ai-prompt" className="sr-only">
-            AI Prompt
-          </label>
-          <textarea
-            id="ai-prompt"
-            value={prompt}
-            onChange={e => setPrompt(e.target.value)}
-            placeholder={
-              activeTab === "generate"
-                ? "A cute 8-bit dragon..."
-                : activeTab === "edit"
-                  ? editMode === "free"
-                    ? "Change color to blue..."
-                    : editMode === "replace_bg"
-                      ? "A spooky forest..."
-                      : editMode === "transform"
-                        ? "Make it glow..."
-                        : "Context for edit..."
-                  : activeTab === "search"
-                    ? "What do dungeon tiles look like?"
-                    : "Optional context for analysis..."
-            }
-            className="w-full bg-gray-700 text-white p-2 rounded border border-gray-600 focus:border-indigo-500 outline-none resize-none h-20 text-sm"
-          />
-          <button
-            onClick={
-              activeTab === "generate"
-                ? handleGenerate
-                : activeTab === "edit"
-                  ? handleEdit
-                  : activeTab === "search"
-                    ? handleSearch
-                    : handleAnalyze
-            }
-            disabled={loading}
-            type="button"
-            className="w-full bg-indigo-600 hover:bg-indigo-500 text-white py-2 rounded font-medium text-sm flex items-center justify-center gap-2 disabled:opacity-50"
-          >
-            <Sparkles size={16} />
-            {activeTab === "generate"
-              ? "Generate Asset"
-              : activeTab === "edit"
-                ? "Magic Edit"
-                : activeTab === "search"
-                  ? "Search"
-                  : "Analyze"}
-          </button>
         </div>
       </div>
     </div>

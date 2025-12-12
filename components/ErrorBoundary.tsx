@@ -1,70 +1,85 @@
-import type React from "react";
-import { Component, type ReactNode } from "react";
+import React, { Component, type ErrorInfo, type ReactNode } from "react";
+import { resetLayout } from "../systems/layoutManager.ts";
 
-interface ErrorBoundaryProps {
+interface Props {
   children: ReactNode;
-  fallback?: ReactNode;
 }
 
-interface ErrorBoundaryState {
+interface State {
   hasError: boolean;
   error: Error | null;
-  errorInfo: React.ErrorInfo | null;
+  errorInfo: ErrorInfo | null;
 }
 
-class ErrorBoundary extends Component<ErrorBoundaryProps, ErrorBoundaryState> {
-  constructor(props: ErrorBoundaryProps) {
-    super(props);
-    this.state = {
-      hasError: false,
-      error: null,
-      errorInfo: null,
-    };
-  }
+export class ErrorBoundary extends Component<Props, State> {
+  public state: State = {
+    hasError: false,
+    error: null,
+    errorInfo: null,
+  };
 
-  static getDerivedStateFromError(error: Error): ErrorBoundaryState {
+  public static getDerivedStateFromError(error: Error): State {
     return { hasError: true, error, errorInfo: null };
   }
 
-  componentDidCatch(error: Error, errorInfo: React.ErrorInfo): void {
-    console.error("ErrorBoundary caught error:", error, errorInfo);
-    this.setState({
-      hasError: true,
-      error,
-      errorInfo,
-    });
+  public componentDidCatch(error: Error, errorInfo: ErrorInfo) {
+    console.error("Uncaught error:", error, errorInfo);
+    this.setState({ errorInfo });
   }
 
-  render(): ReactNode {
-    if (this.state.hasError) {
-      if (this.props.fallback) {
-        return this.props.fallback;
-      }
+  private handleResetLayout = () => {
+    resetLayout();
+    window.location.reload();
+  };
 
+  private handleReload = () => {
+    window.location.reload();
+  };
+
+  public render() {
+    if (this.state.hasError) {
       return (
-        <div className="flex flex-col items-center justify-center h-full p-4 text-red-400 bg-gray-900 border border-red-500/30 rounded-lg">
-          <h2 className="text-lg font-bold mb-2">Something went wrong</h2>
-          <p className="text-sm mb-2">The application encountered an error.</p>
-          <details className="text-xs text-gray-400 mt-2">
-            <summary>Technical Details</summary>
-            <div className="mt-2 p-2 bg-gray-800 rounded">
-              <p>
-                <strong>Error:</strong> {this.state.error?.message}
+        <div className="flex flex-col items-center justify-center min-h-screen bg-gray-900 text-white p-8">
+          <div className="bg-gray-800 p-8 rounded-lg shadow-xl max-w-2xl w-full border border-gray-700">
+            <h1 className="text-3xl font-bold text-red-500 mb-4">
+              Something went wrong
+            </h1>
+            <p className="text-gray-300 mb-6">
+              The application encountered an unexpected error. This might be due
+              to a corrupted layout configuration or a network issue.
+            </p>
+
+            <div className="bg-black/50 p-4 rounded mb-6 font-mono text-sm overflow-auto max-h-48 border border-gray-600">
+              <p className="text-red-400 font-bold mb-2">
+                {this.state.error?.toString()}
               </p>
-              {this.state.error?.stack && (
-                <pre className="text-xs overflow-auto max-h-32 mt-1">
-                  {this.state.error.stack}
-                </pre>
-              )}
+              <pre className="text-gray-500">
+                {this.state.errorInfo?.componentStack}
+              </pre>
             </div>
-          </details>
-          <button
-            type="button"
-            onClick={() => window.location.reload()}
-            className="mt-4 px-4 py-2 bg-indigo-600 hover:bg-indigo-500 text-white rounded text-sm"
-          >
-            Reload Application
-          </button>
+
+            <div className="flex gap-4">
+              <button
+                type="button"
+                onClick={this.handleReload}
+                className="px-6 py-2 bg-blue-600 hover:bg-blue-700 rounded text-white font-medium transition-colors"
+              >
+                Reload Application
+              </button>
+              <button
+                type="button"
+                onClick={this.handleResetLayout}
+                className="px-6 py-2 bg-red-600 hover:bg-red-700 rounded text-white font-medium transition-colors"
+              >
+                Reset UI Layout
+              </button>
+            </div>
+
+            <p className="mt-6 text-sm text-gray-500">
+              If the issue persists, please check your network connection or
+              contact support.
+            </p>
+          </div>
         </div>
       );
     }

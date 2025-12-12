@@ -11,15 +11,19 @@ import {
 } from "lucide-react";
 import type React from "react";
 import { useEffect, useState } from "react";
-import version from "../package.json";
-import { type PluginInstance, pluginManager } from "../systems/PluginManager";
+import version from "../package.json" with { type: "json" };
+import {
+  type PluginInstance,
+  pluginManager,
+} from "../systems/PluginManager.ts";
 import {
   DEFAULT_HOTKEYS,
   type HotkeyAction,
   type HotkeyMap,
   saveHotkeys,
-} from "../utils/hotkeyUtils";
-import { applyTheme, type Theme, themes } from "../utils/themeUtils";
+} from "../utils/hotkeyUtils.ts";
+import { logger } from "../utils/logger.ts";
+import { applyTheme, type Theme, themes } from "../utils/themeUtils.ts";
 
 interface SettingsModalProps {
   isOpen: boolean;
@@ -63,6 +67,9 @@ const SettingsModal: React.FC<SettingsModalProps> = ({
   const [localApiKey, setLocalApiKey] = useState(apiKey);
   const [plugins, setPlugins] = useState<PluginInstance[]>([]);
   const [editingAction, setEditingAction] = useState<string | null>(null);
+  const [debugEnabled, setDebugEnabled] = useState(
+    localStorage.getItem("debug_logging") === "true",
+  );
 
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
@@ -306,6 +313,41 @@ const SettingsModal: React.FC<SettingsModalProps> = ({
                 </label>
                 <div className="text-xs text-gray-500 ml-8">
                   Keep the application running in the background when minimized.
+                </div>
+
+                <div className="pt-4 border-t border-gray-700"></div>
+
+                <label
+                  htmlFor="debug-logging"
+                  className="flex items-center gap-3 cursor-pointer group"
+                >
+                  <div
+                    className={`w-5 h-5 rounded border flex items-center justify-center ${debugEnabled ? "bg-indigo-600 border-indigo-600" : "border-gray-600 group-hover:border-gray-500"}`}
+                  >
+                    {debugEnabled && <Check size={14} className="text-white" />}
+                  </div>
+                  <input
+                    id="debug-logging"
+                    type="checkbox"
+                    className="hidden"
+                    checked={debugEnabled}
+                    onChange={e => {
+                      const enabled = e.target.checked;
+                      setDebugEnabled(enabled);
+                      if (enabled) {
+                        logger.enableDebug();
+                      } else {
+                        logger.disableDebug();
+                      }
+                    }}
+                  />
+                  <span className="text-gray-300 group-hover:text-white">
+                    Enable Debug Logging
+                  </span>
+                </label>
+                <div className="text-xs text-gray-500 ml-8">
+                  Log verbose debug information to the console (and file in
+                  Electron). Useful for troubleshooting.
                 </div>
               </div>
             )}
@@ -699,11 +741,7 @@ function deactivate(api) {
               <div className="space-y-6 text-center">
                 <div className="py-8 flex flex-col items-center justify-center">
                   <div className="w-20 h-20 bg-indigo-600 rounded-2xl flex items-center justify-center mb-4 shadow-lg shadow-indigo-900/50">
-                    <img
-                      src="favicon.png"
-                      alt="logo"
-                      className="w-full h-full"
-                    />
+                    <img src="logo.png" alt="logo" className="w-full h-full" />
                   </div>
                   <h2 className="text-2xl font-bold text-white mb-1">
                     PixelForge AI

@@ -6,7 +6,7 @@ import {
   deleteTemplate,
   getAllTemplates,
   type ProjectTemplate,
-} from "../templates/templateManager";
+} from "../templates/templateManager.ts";
 
 interface TemplateEditorProps {
   onSelect: (template: ProjectTemplate) => void;

@@ -18,13 +18,13 @@ files:
 
   - "electron-builder.yml"
 
-icon: "dist-electron/.icon-ico/icon.ico"
+icon: "build/icons/icons/win/icon.ico"
 nsis:
   oneClick: false
   allowToChangeInstallationDirectory: true
 
 win:
-  icon: "dist-electron/.icon-ico/icon.ico"
+  icon: "build/icons/icons/win/icon.ico"
   target:
     - target: "nsis"
       arch: "x64"
@@ -32,4 +32,4 @@ win:
       arch: "x64"
   verifyUpdateCodeSignature: false
 directories:
-  output: "dist-electron"
+  output: "release"

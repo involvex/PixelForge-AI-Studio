@@ -3,6 +3,8 @@
  * that will work with the development server and production builds
  */
 
+import process from "node:process";
+
 const generateHtmlTemplate = (): string => {
   return `<!DOCTYPE html>
 <html lang="en">

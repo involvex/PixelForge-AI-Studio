@@ -1,4 +1,4 @@
-import { createEmptyGrid } from "./drawingUtils";
+import { createEmptyGrid } from "./drawingUtils.ts";
 
 export interface TransformOptions {
   scaleX: number;

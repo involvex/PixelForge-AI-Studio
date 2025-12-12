@@ -1,5 +1,5 @@
 import * as _gifenc from "gifenc";
-import { Frame, Layer } from "../types";
+import type { Frame, Layer } from "../types.ts";
 
 // Fix for gifenc import if needed (copying from App.tsx)
 const gifenc =

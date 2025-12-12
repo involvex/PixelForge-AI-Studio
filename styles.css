@@ -1,3 +1,16 @@
+@import "tailwindcss";
+
+@import "rc-dock/dist/rc-dock.css";
+
+html,
+body,
+#root {
+  height: 100%;
+  margin: 0;
+  padding: 0;
+  overflow: hidden;
+}
+
 /* Custom scrollbar for dark theme */
 ::-webkit-scrollbar {
   width: 8px;
@@ -126,4 +139,126 @@
 
 .retry-button:hover {
   background: #4338ca;
+}
+
+/* rc-dock Dark Theme Overrides - Consolidated & Strengthened */
+/* stylelint-disable declaration-no-important */
+
+/* Base Layout */
+.dark .dock-layout {
+  background-color: #0f172a !important; /* Slate-900 */
+}
+
+/* Panels & Content */
+.dark .dock-panel {
+  background: #1e293b !important; /* Slate-800 */
+  border: 1px solid #334155 !important; /* Slate-700 */
+  border-radius: 4px;
+}
+
+.dark .dock-content {
+  background: #1e293b !important;
+  color: #e2e8f0 !important;
+}
+
+/* Bar & Navigation */
+.dark .dock-bar {
+  background: #0f172a !important; /* Slate-900 */
+  border-bottom: 1px solid #334155 !important; /* Slate-700 */
+  padding: 0 !important;
+  height: 2rem !important; /* 32px -> 2rem */
+}
+
+.dark .dock-nav-wrap {
+  padding-left: 4px;
+}
+
+/* Tabs */
+.dark .dock-tab {
+  background: #1e293b !important; /* Slate-800 */
+  color: #94a3b8 !important; /* Slate-400 */
+  border: 1px solid #334155 !important;
+  border-bottom: none !important;
+  border-top-left-radius: 6px;
+  border-top-right-radius: 6px;
+  margin-right: 2px !important;
+  padding: 0 0.75rem !important;
+  height: 1.9rem !important; /* 31px -> 1.9rem */
+  margin-top: 1px !important;
+  transition: all 0.2s ease;
+}
+
+.dark .dock-tab > div {
+  padding: 4px 0 !important;
+  font-size: 0.85rem;
+}
+
+.dark .dock-tab-btn {
+  color: inherit !important; /* Inherit from .dock-tab */
+  background: transparent !important;
+  border: none !important;
+  padding: 0 !important;
+}
+
+.dark .dock-tab:hover {
+  background: #334155 !important; /* Slate-700 */
+  color: #f1f5f9 !important; /* Slate-100 */
+}
+
+.dark .dock-tab-active,
+.dark .dock-tab.dock-tab-active {
+  background: #1e293b !important; /* Match panel bg */
+  color: #818cf8 !important; /* Indigo-400 */
+  border-color: #334155 !important;
+  border-bottom: 1px solid #1e293b !important; /* Hide bottom border */
+  font-weight: 600;
+  z-index: 10;
+}
+
+/* Tab Icon Alignment */
+.dark .dock-tab-btn span.flex {
+  display: flex;
+  align-items: center;
+}
+
+/* Hide Ink Bar (using card style) */
+.dark .dock-ink-bar {
+  display: none !important;
+}
+
+/* Drop Indicators */
+.dark .dock-drop-layer .dock-drop-square {
+  background: rgba(99, 102, 241, 0.2) !important;
+  border: 2px dashed #6366f1 !important;
+  box-sizing: border-box;
+}
+
+/* Dividers */
+.dark .dock-divider {
+  background: #020617 !important; /* Slate-950 */
+  width: 6px !important;
+  height: 6px !important;
+  opacity: 1 !important;
+}
+
+/* Helpers */
+.dark .dock-extra-content {
+  display: none;
+}
+
+.dark .dock-float {
+  background: #0f172a !important;
+  border: 1px solid #475569 !important;
+  box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.5) !important;
+}
+
+.dark .dock-tab-close-btn {
+  color: #64748b !important;
+  margin-left: 8px !important;
+  opacity: 0.7;
+}
+
+.dark .dock-tab-close-btn:hover {
+  color: #ef4444 !important;
+  opacity: 1;
 }

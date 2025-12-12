@@ -1,13 +1,15 @@
 // import "ts-node/register";
+
+import fs from "node:fs";
+import path from "node:path";
+import process from "node:process";
+import { fileURLToPath } from "node:url";
 import debug from "debug";
 import electron from "electron";
 import electronDebug from "electron-debug";
 import isDev from "electron-is-dev";
 import logger from "electron-log";
-import fs from "node:fs";
-import path from "node:path";
-import { fileURLToPath } from "node:url";
-import { updateElectronApp, UpdateSourceType } from "update-electron-app";
+import { UpdateSourceType, updateElectronApp } from "update-electron-app";
 
 if (!isDev) {
   updateElectronApp({
@@ -177,12 +179,12 @@ function createWindow() {
     const iconPath = isDev
       ? path.join(process.cwd(), "public/favicon.ico")
       : path.join(electron.app.getAppPath(), "dist/favicon.ico");
-    let preloadPath: string;
-    if (isDev) {
-      preloadPath = path.join(electron.app.getAppPath(), "preload.js");
-    } else {
-      preloadPath = path.join(__dirname, "preload.js");
-    }
+
+    // Use __dirname to resolve preload.js relative to the main process file
+    // This works in both dev (dist/electron/main.js -> dist/electron/preload.js)
+    // and prod (app.asar/dist/electron/main.js -> app.asar/dist/electron/preload.js)
+    const preloadPath = path.join(__dirname, "preload.js");
+
     const win = new electron.BrowserWindow({
       width: 1280,
       height: 720,
@@ -190,7 +192,9 @@ function createWindow() {
       webPreferences: {
         nodeIntegration: false,
         contextIsolation: true,
-        webSecurity: true,
+        // Disable webSecurity in production to allow CDN resources (Tailwind, Google Fonts)
+        // to load from file:// protocol. This is safe because the app only loads local content.
+        webSecurity: isDev,
         preload: preloadPath,
       },
     });

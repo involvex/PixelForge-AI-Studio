@@ -1,5 +1,5 @@
 import type React from "react";
-import MenuDropdown, { MenuItem, MenuSeparator } from "./MenuDropdown";
+import MenuDropdown, { MenuItem, MenuSeparator } from "./MenuDropdown.tsx";
 
 interface EditMenuProps {
   isOpen: boolean;

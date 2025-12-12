@@ -1,9 +1,11 @@
-import type { Frame, Layer } from "../types";
-import { createEmptyGrid } from "../utils/drawingUtils";
+import type { Frame, Layer } from "../types.ts";
+import { createEmptyGrid } from "../utils/drawingUtils.ts";
 
 export interface ProjectTemplate {
   id: string;
   name: string;
+  description?: string;
+  category?: "built-in" | "custom";
   icon?: string;
   width: number;
   height: number;

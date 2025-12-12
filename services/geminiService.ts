@@ -1,5 +1,6 @@
+import process from "node:process";
 import { GoogleGenAI } from "@google/genai";
-import type { AspectRatio, ImageSize } from "../types";
+import type { AspectRatio, ImageSize } from "../types.ts";
 
 // Helper to get AI instance with error handling
 const getAI = () => {

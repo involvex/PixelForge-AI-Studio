@@ -1,5 +1,5 @@
-import type { Frame } from "../types";
-import { createEmptyGrid } from "../utils/drawingUtils";
+import type { Frame } from "../types.ts";
+import { createEmptyGrid } from "../utils/drawingUtils.ts";
 
 export interface TransformOptions {
   scaleX?: number; // percentage (e.g., 100 = 1x)

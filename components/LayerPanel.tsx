@@ -10,7 +10,7 @@ import {
   Unlock,
 } from "lucide-react";
 import React, { useState } from "react";
-import type { Layer as LayerType } from "../types";
+import type { Layer as LayerType } from "../types.ts";
 
 interface LayerPanelProps {
   layers: LayerType[];

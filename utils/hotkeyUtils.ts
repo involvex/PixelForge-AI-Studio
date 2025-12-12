@@ -60,15 +60,17 @@ export const DEFAULT_HOTKEYS: HotkeyMap = {
 
 export const getHotkeys = (): HotkeyMap => {
   const saved = localStorage.getItem("pf_hotkeys");
+  let hotkeys = DEFAULT_HOTKEYS;
   if (saved) {
     try {
       const parsed = JSON.parse(saved);
-      return { ...DEFAULT_HOTKEYS, ...parsed };
+      hotkeys = { ...DEFAULT_HOTKEYS, ...parsed };
     } catch (e) {
       console.error("Failed to parse hotkeys", e);
     }
   }
-  return DEFAULT_HOTKEYS;
+  console.log("[HOTKEY_UTILS] Loaded hotkeys:", hotkeys);
+  return hotkeys;
 };
 
 export const saveHotkeys = (hotkeys: HotkeyMap) => {
@@ -92,5 +94,14 @@ export const getActionFromEvent = (
   parts.push(key);
   const combo = parts.join("+");
 
-  return hotkeys[combo] || null;
+  console.log(
+    "[HOTKEY_UTILS] Checking combo:",
+    combo,
+    "Available hotkeys:",
+    Object.keys(hotkeys),
+  );
+  const action = hotkeys[combo] || null;
+  console.log("[HOTKEY_UTILS] Action for combo", combo, ":", action);
+
+  return action;
 };

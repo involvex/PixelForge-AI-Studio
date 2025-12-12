@@ -8,7 +8,7 @@
   },
   "license": "MIT",
   "private": true,
-  "version": "0.0.27",
+  "version": "0.1.0",
   "type": "module",
   "main": "dist/electron/main.js",
   "scripts": {
@@ -35,11 +35,16 @@
     "build:electron:portable": "cross-env ELECTRON=true npm run build && npm run compile:electron && electron-builder --win portable -c electron-builder.yml",
     "electron:debug": "concurrently \"cross-env NODE_ENV=development\" \"npm run dev:electron\"",
     "prepare": "husky",
-    "preversion": "npm run format:check && npm run lint:fix && npm run typecheck"
+    "preversion": "npm run format:check && npm run lint:fix && npm run typecheck",
+    "biome:check": "biome check .",
+    "biome:fix": "biome check . --fix",
+    "biome:format": "biome format . --write"
   },
   "dependencies": {
     "@google/genai": "^1.31.0",
+    "@tailwindcss/postcss": "^4.1.18",
     "cross-env": "^10.1.0",
+    "cssnano": "^7.1.2",
     "dotenv": "^17.2.3",
     "electron-log": "^5.4.3",
     "gifenc": "^1.0.3",
@@ -50,9 +55,11 @@
     "rc-dock": "^4.0.0-alpha.2",
     "react": "^19.2.1",
     "react-dom": "^19.2.1",
+    "react-toastify": "^11.0.5",
     "update-electron-app": "^3.1.2"
   },
   "devDependencies": {
+    "@biomejs/biome": "^2.3.8",
     "@eslint/css": "^0.14.1",
     "@eslint/js": "^9.39.1",
     "@eslint/json": "^0.14.0",
@@ -61,6 +68,7 @@
     "@types/react": "^19.2.7",
     "@types/react-dom": "^19.2.3",
     "@vitejs/plugin-react": "^5.0.0",
+    "autoprefixer": "^10.4.22",
     "concurrently": "^9.2.1",
     "electron": "^39.2.6",
     "electron-builder": "^26.3.4",
@@ -73,8 +81,11 @@
     "gh-pages": "^6.3.0",
     "globals": "^16.5.0",
     "husky": "^9.1.7",
+    "postcss": "^8.5.6",
     "prettier": "^3.7.4",
     "prettier-plugin-organize-imports": "^4.3.0",
+    "sharp": "^0.34.5",
+    "tailwindcss": "^4.1.17",
     "typescript": "~5.8.2",
     "typescript-eslint": "^8.48.1",
     "vite": "^6.2.0",
@@ -82,9 +93,5 @@
   },
   "files": [
     "/dist/**/*"
-  ],
-  "build": {
-    "version": "0.0.3",
-    "icon": "favicon.png"
-  }
+  ]
 }

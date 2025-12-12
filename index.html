@@ -3,7 +3,7 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <link rel="icon" type="image/png" href="favicon.png" />
+    <link rel="icon" type="image/png" href="/logo.png" />
     <title>PixelForge AI Studio</title>
     <meta
       name="description"
@@ -21,29 +21,7 @@
       }
     </style>
 
-    <!-- Tailwind CSS CDN with custom configuration -->
-    <script src="https://cdn.tailwindcss.com"></script>
-    <script>
-      tailwind.config = {
-        theme: {
-          extend: {
-            fontFamily: {
-              sans: ["Inter", "sans-serif"],
-              pixel: ['"Press Start 2P"', "cursive"],
-            },
-            colors: {
-              gray: {
-                750: "var(--color-gray-750)",
-                850: "var(--color-gray-850)",
-                950: "var(--color-gray-950)",
-              },
-            },
-          },
-        },
-      };
-    </script>
-
-    <!-- Google Fonts -->
+    <!-- Google Fonts (loaded via CSS for offline fallback) -->
     <link
       href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Press+Start+2P&display=swap"
       rel="stylesheet"
