@@ -207,6 +207,45 @@ function App() {
     applyTheme(theme);
   }, [currentThemeId]);
 
+  // Handle Delete Selection - clears pixels in selection mask
+  const handleDeleteSelection = useCallback(() => {
+    if (!selectionMask) return;
+    recordHistory();
+    const currentPixels = frames[currentFrameIndex]?.layers[activeLayerId];
+    if (!currentPixels) return;
+
+    const newPixels = currentPixels.map((row, y) =>
+      row.map((pixel, x) => (selectionMask[y]?.[x] ? null : pixel)),
+    );
+    updateActiveLayerPixels(activeLayerId, newPixels);
+  }, [selectionMask, recordHistory, frames, currentFrameIndex, activeLayerId]);
+
+  // Handle Select All - selects entire canvas
+  const handleSelectAll = useCallback(() => {
+    console.log(
+      "[HOTKEY] SELECT_ALL triggered, creating mask for",
+      width,
+      "x",
+      height,
+    );
+    // Create a proper 2D boolean array - each row must be a unique array
+    const mask: boolean[][] = [];
+    for (let y = 0; y < height; y++) {
+      const row: boolean[] = [];
+      for (let x = 0; x < width; x++) {
+        row.push(true);
+      }
+      mask.push(row);
+    }
+    console.log("[HOTKEY] Created selection mask:", mask.length, "rows");
+    setSelectionMask(mask);
+  }, [height, width, setSelectionMask]);
+
+  // Handle Deselect - clears selection
+  const handleDeselect = useCallback(() => {
+    setSelectionMask(null);
+  }, [setSelectionMask]);
+
   // Handle Hotkeys
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
@@ -243,7 +282,54 @@ function App() {
           case "TOGGLE_GRID":
             setGridVisible(!gridVisible);
             break;
-          // Add more hotkey actions as needed
+          // Selection actions
+          case "DELETE_SELECTION":
+            handleDeleteSelection();
+            break;
+          case "SELECT_ALL":
+            handleSelectAll();
+            break;
+          case "DESELECT":
+            handleDeselect();
+            break;
+          // Tool shortcuts
+          case "TOOL_PENCIL":
+            setSelectedTool(ToolType.PENCIL);
+            break;
+          case "TOOL_ERASER":
+            setSelectedTool(ToolType.ERASER);
+            break;
+          case "TOOL_BUCKET":
+            setSelectedTool(ToolType.BUCKET);
+            break;
+          case "TOOL_PICKER":
+            setSelectedTool(ToolType.PICKER);
+            break;
+          case "TOOL_SELECT":
+            setSelectedTool(ToolType.SELECT);
+            break;
+          case "TOOL_WAND":
+            setSelectedTool(ToolType.MAGIC_WAND);
+            break;
+          case "TOOL_LASSO":
+            setSelectedTool(ToolType.LASSO);
+            break;
+          case "TOOL_MOVE":
+            setSelectedTool(ToolType.MOVE);
+            break;
+          case "TOOL_TRANSFORM":
+            setSelectedTool(ToolType.TRANSFORM);
+            break;
+          case "TOOL_HAND":
+            setSelectedTool(ToolType.HAND);
+            break;
+          // File actions
+          case "SAVE":
+            handleSaveProject();
+            break;
+          case "EXPORT":
+            setShowExport(true);
+            break;
           default:
             console.log("Unhandled hotkey action:", action);
         }
@@ -260,6 +346,9 @@ function App() {
     handleZoomOut,
     gridVisible,
     setSelectedTool,
+    handleDeleteSelection,
+    handleSelectAll,
+    handleDeselect,
   ]);
 
   // Helper: Update Active Layer Pixels
