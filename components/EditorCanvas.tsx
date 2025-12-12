@@ -1,6 +1,84 @@
 import type React from "react";
 import { useCallback, useEffect, useRef, useState } from "react";
-import { type Coordinates, type Layer, SelectMode, ToolType } from "../types";
+import {
+  type Coordinates,
+  type Layer,
+  SelectMode,
+  ToolType,
+} from "../types.ts";
+
+// OPTIMIZED RENDERING HELPER FUNCTIONS
+
+// Optimized pixel rendering with color batching
+const renderLayerPixels = (
+  ctx: CanvasRenderingContext2D,
+  pixels: (string | null)[][],
+  opacity: number,
+  zoom: number,
+) => {
+  ctx.save();
+  ctx.globalAlpha = opacity;
+
+  // Group pixels by color to minimize fillStyle changes
+  const colorGroups = new Map<string, { x: number; y: number }[]>();
+
+  for (let y = 0; y < pixels.length; y++) {
+    for (let x = 0; x < pixels[y].length; x++) {
+      const color = pixels[y][x];
+      if (color) {
+        if (!colorGroups.has(color)) {
+          colorGroups.set(color, []);
+        }
+        colorGroups.get(color)!.push({ x, y });
+      }
+    }
+  }
+
+  // Draw all pixels of each color in one operation
+  for (const [color, positions] of colorGroups) {
+    ctx.fillStyle = color;
+    for (const pos of positions) {
+      ctx.fillRect(pos.x * zoom, pos.y * zoom, zoom, zoom);
+    }
+  }
+
+  ctx.restore();
+};
+
+// Floating buffer rendering
+const renderFloatingBuffer = (
+  ctx: CanvasRenderingContext2D,
+  floatingBuffer: (string | null)[][] | null,
+  floatingOffset: Coordinates,
+  zoom: number,
+) => {
+  if (!floatingBuffer) return;
+
+  // Group floating buffer pixels by color
+  const colorGroups = new Map<string, { x: number; y: number }[]>();
+
+  floatingBuffer.forEach((row, y) => {
+    row.forEach((color, x) => {
+      if (color) {
+        if (!colorGroups.has(color)) {
+          colorGroups.set(color, []);
+        }
+        colorGroups
+          .get(color)!
+          .push({ x: x + floatingOffset.x, y: y + floatingOffset.y });
+      }
+    });
+  });
+
+  // Draw all floating pixels of each color in one operation
+  for (const [color, positions] of colorGroups) {
+    ctx.fillStyle = color;
+    for (const pos of positions) {
+      ctx.fillRect(pos.x * zoom, pos.y * zoom, zoom, zoom);
+    }
+  }
+};
+
 import {
   drawOnMask,
   extractSelectedPixels,
@@ -10,12 +88,12 @@ import {
   mergePixels,
   rasterizePolygon,
   shiftMask,
-} from "../utils/drawingUtils";
+} from "../utils/drawingUtils.ts";
 import {
   rasterizeTransform,
   rasterizeTransformMask,
   type TransformState,
-} from "../utils/transform";
+} from "../utils/transform.ts";
 
 interface EditorCanvasProps {
   width: number;
@@ -72,7 +150,9 @@ const EditorCanvas: React.FC<EditorCanvasProps> = ({
   onCursorMove,
 }) => {
   const canvasRef = useRef<HTMLCanvasElement>(null);
+  const ctxRef = useRef<CanvasRenderingContext2D | null>(null);
   const [isDrawing, setIsDrawing] = useState(false);
+  const [dashOffset, setDashOffset] = useState(0);
   const [previewPixel, setPreviewPixel] = useState<Coordinates | null>(null);
   const [lassoPoints, setLassoPoints] = useState<Coordinates[]>([]);
 
@@ -105,6 +185,26 @@ const EditorCanvas: React.FC<EditorCanvasProps> = ({
     null,
   );
   const [selectionEnd, setSelectionEnd] = useState<Coordinates | null>(null);
+
+  // Cleanup canvas context on unmount
+  useEffect(() => {
+    return () => {
+      // Clear cached context
+      ctxRef.current = null;
+    };
+  }, []);
+
+  // Marching ants animation
+  useEffect(() => {
+    if (!selectionMask) return;
+
+    const animate = () => {
+      setDashOffset(prev => (prev + 1) % 8);
+    };
+
+    const interval = setInterval(animate, 100);
+    return () => clearInterval(interval);
+  }, [selectionMask]);
 
   // Reset transient states when history changes (e.g. undo/redo)
   useEffect(() => {
@@ -271,8 +371,18 @@ const EditorCanvas: React.FC<EditorCanvasProps> = ({
     const canvas = canvasRef.current;
     if (!canvas) return;
 
-    const ctx = canvas.getContext("2d");
-    if (!ctx) return;
+    // Cache canvas context to prevent recreation
+    let ctx = ctxRef.current;
+    if (!ctx) {
+      ctx = canvas.getContext("2d");
+      if (!ctx) return;
+
+      // Configure canvas context
+      ctx.imageSmoothingEnabled = false;
+      ctx.textBaseline = "top";
+
+      ctxRef.current = ctx;
+    }
 
     // Clear
     ctx.clearRect(0, 0, width * zoom, height * zoom);
@@ -288,33 +398,13 @@ const EditorCanvas: React.FC<EditorCanvasProps> = ({
       const pixels = layerPixels[layer.id];
       if (!pixels) return;
 
-      ctx.save();
-      ctx.globalAlpha = layer.opacity;
+      // Use optimized batched rendering
+      renderLayerPixels(ctx, pixels, layer.opacity, zoom);
 
-      pixels.forEach((row, y) => {
-        row.forEach((color, x) => {
-          if (color) {
-            ctx.fillStyle = color;
-            ctx.fillRect(x * zoom, y * zoom, zoom, zoom);
-          }
-        });
-      });
-
-      // Move Tool Preview
+      // Move Tool Preview (only for active layer)
       if (layer.id === activeLayerId && floatingBuffer) {
-        floatingBuffer.forEach((row, y) => {
-          row.forEach((color, x) => {
-            if (color) {
-              const drawX = (x + floatingOffset.x) * zoom;
-              const drawY = (y + floatingOffset.y) * zoom;
-              ctx.fillStyle = color;
-              ctx.fillRect(drawX, drawY, zoom, zoom);
-            }
-          });
-        });
+        renderFloatingBuffer(ctx, floatingBuffer, floatingOffset, zoom);
       }
-
-      ctx.restore();
 
       // Transform Tool Preview
       if (
@@ -456,25 +546,97 @@ const EditorCanvas: React.FC<EditorCanvasProps> = ({
 
     // 3. Draw Selection Overlay
     if (selectionMask && selectedTool !== ToolType.TRANSFORM) {
-      ctx.fillStyle = "rgba(100, 150, 255, 0.2)";
-      ctx.strokeStyle = "#fff";
-      ctx.setLineDash([4, 4]);
-      ctx.lineWidth = 1;
-
       const offsetX = floatingBuffer ? floatingOffset.x : 0;
       const offsetY = floatingBuffer ? floatingOffset.y : 0;
 
-      selectionMask.forEach((row, y) => {
-        row.forEach((selected, x) => {
-          if (selected) {
+      // Check if this is a full canvas selection (all pixels selected)
+      let isFullSelection = true;
+      let hasSelection = false;
+      for (let y = 0; y < selectionMask.length && isFullSelection; y++) {
+        for (let x = 0; x < selectionMask[y].length; x++) {
+          if (selectionMask[y][x]) {
+            hasSelection = true;
+          } else {
+            isFullSelection = false;
+            break;
+          }
+        }
+      }
+
+      if (isFullSelection && hasSelection) {
+        // Full canvas selection: draw marching ants around the canvas border only
+        ctx.strokeStyle = "#fff";
+        ctx.setLineDash([4, 4]);
+        ctx.lineDashOffset = dashOffset;
+        ctx.lineWidth = 1;
+
+        const borderX = offsetX * zoom;
+        const borderY = offsetY * zoom;
+        const borderWidth = width * zoom;
+        const borderHeight = height * zoom;
+
+        ctx.strokeRect(borderX, borderY, borderWidth, borderHeight);
+        ctx.setLineDash([]);
+        ctx.lineDashOffset = 0; // Reset for other drawings
+      } else if (hasSelection) {
+        // Partial selection: use perimeter-based marching ants
+        // First pass: draw very subtle fill for selected pixels (reduced opacity)
+        ctx.fillStyle = "rgba(100, 150, 255, 0.05)";
+        selectionMask.forEach((row, y) => {
+          row.forEach((selected, x) => {
+            if (selected) {
+              const drawX = (x + offsetX) * zoom;
+              const drawY = (y + offsetY) * zoom;
+              ctx.fillRect(drawX, drawY, zoom, zoom);
+            }
+          });
+        });
+
+        // Second pass: draw marching ants only on perimeter edges
+        ctx.strokeStyle = "#fff";
+        ctx.setLineDash([4, 4]);
+        ctx.lineDashOffset = dashOffset;
+        ctx.lineWidth = 1;
+
+        selectionMask.forEach((row, y) => {
+          row.forEach((selected, x) => {
+            if (!selected) return;
+
             const drawX = (x + offsetX) * zoom;
             const drawY = (y + offsetY) * zoom;
-            ctx.fillRect(drawX, drawY, zoom, zoom);
-            ctx.strokeRect(drawX, drawY, zoom, zoom);
-          }
+
+            // Only draw edges that are on the selection perimeter
+            // Check if adjacent pixels are NOT selected (or out of bounds)
+            const topSelected = y > 0 && selectionMask[y - 1]?.[x];
+            const bottomSelected =
+              y < selectionMask.length - 1 && selectionMask[y + 1]?.[x];
+            const leftSelected = x > 0 && selectionMask[y]?.[x - 1];
+            const rightSelected =
+              x < row.length - 1 && selectionMask[y]?.[x + 1];
+
+            ctx.beginPath();
+            if (!topSelected) {
+              ctx.moveTo(drawX, drawY);
+              ctx.lineTo(drawX + zoom, drawY);
+            }
+            if (!bottomSelected) {
+              ctx.moveTo(drawX, drawY + zoom);
+              ctx.lineTo(drawX + zoom, drawY + zoom);
+            }
+            if (!leftSelected) {
+              ctx.moveTo(drawX, drawY);
+              ctx.lineTo(drawX, drawY + zoom);
+            }
+            if (!rightSelected) {
+              ctx.moveTo(drawX + zoom, drawY);
+              ctx.lineTo(drawX + zoom, drawY + zoom);
+            }
+            ctx.stroke();
+          });
         });
-      });
-      ctx.setLineDash([]);
+        ctx.setLineDash([]);
+        ctx.lineDashOffset = 0; // Reset for other drawings
+      }
     }
 
     // 4. Draw Preview Pixel
@@ -529,28 +691,34 @@ const EditorCanvas: React.FC<EditorCanvasProps> = ({
       ctx.setLineDash([]);
     }
   }, [
-    layers,
-    layerPixels,
+    // MINIMAL DEPENDENCIES - only what actually affects content
+    layerPixels, // The actual pixel data that changes
+    layers.map(l => `${l.id}-${l.visible}-${l.opacity}`).join(","), // Layer metadata hash
     activeLayerId,
     width,
     height,
     zoom,
+    transformState?.x,
+    transformState?.y,
+    transformState?.width,
+    transformState?.height,
+    transformState?.rotation,
+    transformState?.scaleX,
+    transformState?.scaleY,
     gridVisible,
-    previewPixel,
-    selectedTool,
-    selectionMask,
-    floatingBuffer,
-    floatingOffset,
-    transformState,
-    panOffset,
-    selectionStart,
-    selectionEnd,
     gridColor,
     gridSize,
-    isDrawing,
+    panOffset.x,
+    panOffset.y,
+    selectionStart?.x,
+    selectionStart?.y,
+    selectionEnd?.x,
+    selectionEnd?.y,
     lassoPoints.length,
-    lassoPoints[0]?.x,
-    lassoPoints[0]?.y,
+    isDrawing,
+    previewPixel?.x,
+    previewPixel?.y,
+    dashOffset,
   ]);
 
   const handlePointerDown = (e: React.MouseEvent | React.TouchEvent) => {

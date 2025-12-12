@@ -2,7 +2,7 @@
 
 ![PixelForge AI Studio](./favicon.ico)
 
-A professional-grade 2D pixel art and spritesheet editor powered by Google Gemini AI. Features include AI-assisted image generation, text-to-image editing, smart analysis, animation tools, and seamless asset export.
+A professional-grade 2D pixel art and spritesheet editor powered by Google Gemini AI. Features include AI-assisted image generation, text-to-image editing, smart analysis, animation tools, and seamless asset export with a modern modular dockable interface.
 
 ## 🌟 Features
 
@@ -13,6 +13,25 @@ A professional-grade 2D pixel art and spritesheet editor powered by Google Gemin
 - **Animation Timeline**: Create frame-by-frame animations with playback controls
 - **Selection Tools**: Advanced selection with magic wand, lasso, and transformation tools
 - **Palette Management**: Support for custom color palettes with the classic Pico-8 palette included
+
+### 🖥️ Modular Dockable Interface
+
+- **Dockable Panels**: Fully customizable workspace with dockable, resizable panels
+- **Floating Panels**: Detach any panel to work with multiple monitors or organize your workspace
+- **Panel Persistence**: Your custom layout is automatically saved and restored
+- **Smart Panel Grouping**: Panels automatically organize into logical groups (Tools, Properties, AI Features)
+- **Responsive Layout**: Adaptive interface that works on different screen sizes
+- **Panel Registry**: Centralized management of all available panels and tools
+
+#### Available Panels
+
+- **Tools Panel**: Drawing tools, color selection, and brush settings
+- **Layers Panel**: Layer management with visibility, locking, and blending options
+- **Palettes Panel**: Color palette management with custom palette creation
+- **Animation Panel**: Frame-by-frame animation with timeline controls
+- **AI Generation Panel**: AI-powered image generation and editing tools
+- **Adjustments Panel**: Image adjustments and filters
+- **Settings Panel**: Application preferences and configuration
 
 ### AI-Powered Features
 
@@ -82,6 +101,39 @@ npm run preview
 ```
 
 ## 📖 User Guide
+
+### Modular Interface Guide
+
+#### Panel Management
+
+1. **Docking Panels**
+   - Drag panel tabs to dock them to different areas (left, right, top, bottom)
+   - Drop panels on existing panel groups to create tabbed interfaces
+   - Panels snap to edges for easy alignment
+
+2. **Floating Panels**
+   - Click the maximize icon in any panel header to float it
+   - Float panels can be moved anywhere on your screen
+   - Perfect for multi-monitor setups or focusing on specific tools
+
+3. **Resizing Panels**
+   - Hover over panel edges to see resize cursors
+   - Drag to adjust panel sizes
+   - Minimum and maximum sizes are enforced for usability
+
+4. **Layout Persistence**
+   - Your custom layout is automatically saved to local storage
+   - Layout is restored when you reopen the application
+   - Use "Reset Layout" to return to the default arrangement
+
+#### Panel Groups
+
+The interface is organized into logical panel groups:
+
+- **Left Sidebar**: Tools and drawing instruments
+- **Main Area**: Canvas with optional bottom animation panel
+- **Right Sidebar**: Layers, palettes, and AI features
+- **Floating**: Settings and adjustments panels
 
 ### Basic Workflow
 
@@ -187,18 +239,32 @@ PixelForge AI Studio is built with modern web technologies:
 - **AI Integration**: Google Gemini API
 - **Animation**: Custom GIF encoding with gifenc
 - **File Handling**: JSZip for archive operations
+- **Dock Layout**: rc-dock for modular panel system
 
 ### Project Structure
 
 ```
 pixelforge-ai-studio/
 ├── components/           # React components
+│   ├── layout/          # Modular layout components
+│   │   ├── Header.tsx   # Application header
+│   │   ├── Sidebar.tsx  # Sidebar containers
+│   │   └── BarContainer.tsx # Flexible layout containers
 │   ├── AIPanel.tsx      # AI functionality panel
 │   ├── AnimationPanel.tsx # Animation timeline
 │   ├── EditorCanvas.tsx # Main drawing canvas
 │   ├── LayerPanel.tsx   # Layer management
 │   ├── PalettePanel.tsx # Color palette management
-│   └── Toolbar.tsx      # Drawing tools
+│   ├── Toolbar.tsx      # Drawing tools
+│   └── DockablePanel.tsx # Generic dockable panel wrapper
+├── contexts/            # React Context providers
+│   ├── DockPanelContext.tsx # Panel state management
+│   └── DockPanelWrappers.tsx # Context-aware panel wrappers
+├── systems/             # Core systems
+│   ├── layoutManager.ts # Dock layout persistence
+│   └── history.ts       # Undo/redo system
+├── config/              # Configuration
+│   └── panelRegistry.ts # Panel registration system
 ├── services/
 │   └── geminiService.ts # AI service integration
 ├── utils/
@@ -214,8 +280,37 @@ pixelforge-ai-studio/
 The application uses React's built-in state management with:
 
 - **Local State**: Component-level state for UI interactions
+- **Dock Panel Context**: Centralized context for panel state synchronization
 - **History System**: Undo/redo functionality with state snapshots
 - **Project State**: Centralized state for canvas, layers, and frames
+
+### Modular Layout System
+
+The dockable interface is built on several key concepts:
+
+#### Panel Registry
+
+- Centralized configuration for all available panels
+- Dynamic panel registration and management
+- Configurable default positions and sizes
+
+#### Layout Manager
+
+- Persistent layout storage using localStorage
+- Default layout templates for new users
+- Layout validation and error recovery
+
+#### Context-Aware Wrappers
+
+- Panel components receive live updates through React Context
+- Prevents stale closure issues with rc-dock's component caching
+- Real-time synchronization across all panels
+
+#### Flexible Layout Components
+
+- **Header**: Three-section layout (left, center, right) with flexible content
+- **Sidebar**: Resizable sidebar containers with optional width control
+- **BarContainer**: Flexible layout containers for toolbars and controls
 
 ### AI Integration
 
@@ -245,11 +340,14 @@ The AI features are powered by Google Gemini API:
 - `npm run format`: Format code with Prettier
 - `npm run typecheck`: TypeScript type checking
 - `npm run format:check`: Check code formatting
+- `npm run biome:check`: Run Biome linter
+- `npm run biome:fix`: Fix Biome linting issues
 
 ### Code Style
 
 The project uses:
 
+- **Biome**: Fast linter and formatter for TypeScript/React
 - **ESLint**: Code linting with React and TypeScript rules
 - **Prettier**: Code formatting
 - **TypeScript**: Type safety and better development experience
@@ -269,6 +367,18 @@ The project uses:
 - Include proper error handling
 - Test your changes thoroughly
 - Update documentation as needed
+- Use the panel registry for new dockable components
+- Leverage context-aware wrappers for panel state management
+
+### Layout System Development
+
+When adding new panels:
+
+1. **Create Panel Component**: Build your panel as a standard React component
+2. **Register Panel**: Add to `config/panelRegistry.ts`
+3. **Create Wrapper**: Add context wrapper in `contexts/DockPanelWrappers.tsx`
+4. **Update Context**: Extend `DockPanelContextValue` if needed
+5. **Test Docking**: Ensure panel docks, floats, and persists correctly
 
 ## 🔧 Configuration
 
@@ -296,37 +406,100 @@ The project uses Vite for build configuration. Key settings:
 - **Module Preloading**: Enabled for production
 - **React Plugin**: Automatic JSX transformation
 
+### Layout Configuration
+
+The default layout can be customized in `systems/layoutManager.ts`:
+
+```typescript
+export const defaultLayout: LayoutData = {
+  dockbox: {
+    mode: "horizontal",
+    children: [
+      // Left sidebar with tools
+      {
+        mode: "vertical",
+        size: 200,
+        children: [{ tabs: [...] }],
+      },
+      // Main canvas area
+      {
+        mode: "vertical",
+        size: 1000,
+        children: [...],
+      },
+      // Right sidebar with properties
+      {
+        mode: "vertical",
+        size: 300,
+        children: [...],
+      },
+    ],
+  },
+};
+```
+
 ## 🎨 Customization
 
-### Adding New Tools
+### Adding New Panels
 
-1. Define the tool in `types.ts`:
+1. **Create Panel Component**:
 
    ```typescript
-   export enum ToolType {
-     // ... existing tools
-     NEW_TOOL = "NEW_TOOL",
+   // components/MyCustomPanel.tsx
+   const MyCustomPanel: React.FC = () => {
+     return <div>My Custom Panel</div>;
+   };
+   ```
+
+2. **Register Panel**:
+
+   ```typescript
+   // config/panelRegistry.ts
+   {
+     id: "my-custom",
+     title: "My Custom Panel",
+     component: MyCustomPanel,
+     icon: "Star",
+     defaultVisible: true,
+     defaultPosition: "right",
+     minWidth: 250,
+     minHeight: 150,
    }
    ```
 
-2. Add tool logic in `EditorCanvas.tsx`
-3. Update the toolbar in `Toolbar.tsx`
-4. Add any necessary utilities in `drawingUtils.ts`
+3. **Add Context Wrapper**:
 
-### Adding New AI Features
+   ```typescript
+   // contexts/DockPanelWrappers.tsx
+   export const MyCustomPanelWrapper: FC = () => {
+     const ctx = useDockPanelContext();
+     return <MyCustomPanel {...ctx} />;
+   };
+   ```
 
-1. Extend the AI service in `services/geminiService.ts`
-2. Update the UI in `components/AIPanel.tsx`
-3. Add appropriate TypeScript types
-4. Update the prompt handling logic
+4. **Update Main Layout**:
 
-### Custom Palettes
+   ```typescript
+   // components/MainDockLayout.tsx - add case in loadTab
+   case "my-custom":
+     content = <MyCustomPanelWrapper />;
+     break;
+   ```
 
-The palette system supports custom color schemes:
+### Customizing Layout
 
-1. Use the Palette panel to create new palettes
-2. Import/export palette JSON files
-3. The default Pico-8 palette is included for retro game development
+- Modify `defaultLayout` in `layoutManager.ts` for default arrangements
+- Add new layout templates for different use cases
+- Customize panel sizing and grouping strategies
+
+### Theme Customization
+
+The interface uses Tailwind CSS with a custom color scheme:
+
+- **Background**: Dark theme optimized for pixel art work
+- **Panel Headers**: Subtle contrast for better readability
+- **Interactive Elements**: Consistent hover and focus states
+- **Icons**: Lucide React icon set for consistency
 
 ## 📝 License
 
@@ -335,6 +508,7 @@ This project is licensed under the MIT License - see the LICENSE file for detail
 ## 🙏 Acknowledgments
 
 - **Google Gemini**: For providing powerful AI capabilities
+- **rc-dock**: For the excellent dockable panel system
 - **Pico-8**: For the classic color palette inspiration
 - **Lucide**: For the beautiful icon set
 - **React Team**: For the excellent framework
@@ -350,4 +524,4 @@ For support, questions, or feature requests:
 
 ---
 
-**PixelForge AI Studio** - Where creativity meets artificial intelligence. Create, edit, and animate pixel art with the power of AI at your fingertips.
+**PixelForge AI Studio** - Where creativity meets artificial intelligence. Create, edit, and animate pixel art with the power of AI at your fingertips, organized in a flexible, modular interface.
