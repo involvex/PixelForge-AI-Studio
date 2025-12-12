@@ -1,6 +1,6 @@
 // Layout Manager for rc-dock
 import type { LayoutData } from "rc-dock";
-import * as React from "react";
+import React from "react";
 
 const LAYOUT_STORAGE_KEY = "pixelforge_dock_layout_v1";
 

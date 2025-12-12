@@ -1,7 +1,8 @@
 // Wrapper components that consume DockPanelContext
 // These components receive live updates through context instead of stale closure props
 
-import React from "react";
+import type { FC } from "react";
+import * as React from "react";
 import AIPanel from "../components/AIPanel.tsx";
 import AnimationPanel from "../components/AnimationPanel.tsx";
 import EditorCanvas from "../components/EditorCanvas.tsx";
@@ -11,7 +12,7 @@ import Toolbar from "../components/Toolbar.tsx";
 import { useDockPanelContext } from "./DockPanelContext.tsx";
 
 // Canvas wrapper - gets live props from context
-export const CanvasWrapper: React.FC = () => {
+export const CanvasWrapper: FC = () => {
   const ctx = useDockPanelContext();
   return (
     <EditorCanvas
@@ -37,7 +38,7 @@ export const CanvasWrapper: React.FC = () => {
 };
 
 // Toolbar wrapper
-export const ToolbarWrapper: React.FC = () => {
+export const ToolbarWrapper: FC = () => {
   const ctx = useDockPanelContext();
 
   return (
@@ -68,7 +69,7 @@ export const ToolbarWrapper: React.FC = () => {
 };
 
 // Layer panel wrapper
-export const LayerPanelWrapper: React.FC = () => {
+export const LayerPanelWrapper: FC = () => {
   const ctx = useDockPanelContext();
   return (
     <LayerPanel
@@ -85,7 +86,7 @@ export const LayerPanelWrapper: React.FC = () => {
 };
 
 // Palette panel wrapper
-export const PalettePanelWrapper: React.FC = () => {
+export const PalettePanelWrapper: FC = () => {
   const ctx = useDockPanelContext();
   return (
     <PalettePanel
@@ -102,7 +103,7 @@ export const PalettePanelWrapper: React.FC = () => {
 };
 
 // Animation panel wrapper
-export const AnimationPanelWrapper: React.FC = () => {
+export const AnimationPanelWrapper: FC = () => {
   const ctx = useDockPanelContext();
   return (
     <AnimationPanel
@@ -122,7 +123,7 @@ export const AnimationPanelWrapper: React.FC = () => {
 };
 
 // AI panel wrapper
-export const AIPanelWrapper: React.FC = () => {
+export const AIPanelWrapper: FC = () => {
   const ctx = useDockPanelContext();
   return (
     <AIPanel

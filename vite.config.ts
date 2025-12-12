@@ -1,8 +1,8 @@
+import react from "@vitejs/plugin-react";
+import dotenv from "dotenv";
 import path from "path";
 import nodeenv from "process";
 import process from "process";
-import react from "@vitejs/plugin-react";
-import dotenv from "dotenv";
 import { defineConfig, loadEnv } from "vite";
 
 const __dirname = nodeenv.cwd();
@@ -45,47 +45,65 @@ export default defineConfig(({ mode }) => {
       reportCompressedSize: true, // Enable bundle size reporting
       chunkSizeWarningLimit: 1000, // Warn for chunks > 1MB
 
-      // Enhanced code splitting for better caching
-      rollupOptions: {
-        output: {
-          // Strategic chunk splitting
-          manualChunks: id => {
-            // Vendor chunks
-            if (id.includes("node_modules")) {
-              if (id.includes("@google/genai")) return "ai-vendor";
-              if (id.includes("react") || id.includes("react-dom"))
-                return "react-vendor";
-              if (id.includes("lucide-react")) return "icons-vendor";
-              if (id.includes("rc-dock")) return "ui-vendor";
-              if (id.includes("react-toastify")) return "toast-vendor";
-              return "vendor"; // Other vendor libraries
-            }
+      // Enhanced code splitting for better caching (disabled for Electron)
+      rollupOptions: isElectronBuild
+        ? {
+            // For Electron: NO chunk splitting to prevent loading order issues
+            output: {
+              // No manualChunks = everything in one bundle
+              chunkFileNames: "assets/[name]-[hash].js",
+              entryFileNames: "assets/[name]-[hash].js",
+              assetFileNames: "assets/[name]-[hash].[ext]",
+            },
+          }
+        : {
+            output: {
+              // Strategic chunk splitting for web builds
+              manualChunks: id => {
+                // Vendor chunks
+                if (id.includes("node_modules")) {
+                  if (id.includes("@google/genai")) return "ai-vendor";
+                  if (id.includes("react") || id.includes("react-dom"))
+                    return "react-vendor";
+                  if (id.includes("lucide-react")) return "icons-vendor";
+                  if (id.includes("rc-dock")) return "ui-vendor";
+                  if (id.includes("react-toastify")) return "toast-vendor";
+                  return "vendor"; // Other vendor libraries
+                }
 
-            // Feature-based chunks
-            if (id.includes("services/") || id.includes("utils/"))
-              return "core";
-            if (id.includes("components/EditorCanvas")) return "canvas";
-            if (
-              id.includes("components/") &&
-              (id.includes("Panel") || id.includes("Modal"))
-            )
-              return "ui-components";
-            if (id.includes("systems/")) return "systems";
+                // Feature-based chunks
+                if (id.includes("services/") || id.includes("utils/"))
+                  return "core";
+                if (id.includes("components/EditorCanvas")) return "canvas";
+                if (
+                  id.includes("components/") &&
+                  (id.includes("Panel") || id.includes("Modal"))
+                )
+                  return "ui-components";
+                if (id.includes("systems/")) return "systems";
+              },
+
+              // Optimized file naming
+              chunkFileNames: "assets/[name]-[hash].js",
+              entryFileNames: "assets/[name]-[hash].js",
+              assetFileNames: "assets/[name]-[hash].[ext]",
+            },
+
+            // Tree shaking optimizations - preserve React side effects
+            treeshake: {
+              moduleSideEffects: id => {
+                if (id.includes("react") || id.includes("react-dom")) {
+                  return true;
+                }
+                if (id.includes("rc-dock")) {
+                  return true;
+                }
+                return false;
+              },
+              propertyReadSideEffects: false,
+              tryCatchDeoptimization: false,
+            },
           },
-
-          // Optimized file naming
-          chunkFileNames: "assets/[name]-[hash].js",
-          entryFileNames: "assets/[name]-[hash].js",
-          assetFileNames: "assets/[name]-[hash].[ext]",
-        },
-
-        // Tree shaking optimizations
-        treeshake: {
-          moduleSideEffects: false,
-          propertyReadSideEffects: false,
-          tryCatchDeoptimization: false,
-        },
-      },
 
       // Ensure proper bundling instead of relying on CDNs
       modulePreload: {
